@@ -70,33 +70,47 @@ export function NotesPage() {
   }
 
   async function handleCreate() {
-    // Tạo note rỗng, chọn & soạn ngay
-    const created = await notesApi.create({ title: "", content: "" });
-    setSelectedId(created.id);
-    setEditing({ ...created, tags: [] });
-    queryClient.invalidateQueries({ queryKey: ["notes"] });
+    // Tạo DRAFT cục bộ (chưa gọi API) — chỉ POST khi người dùng bấm Lưu.
+    // Điều này tránh lỗi 400 "Tiêu đề không được để trống" khi đang soạn note trống.
+    setSelectedId(null);
+    setEditing({
+      id: "",
+      ownerId: "",
+      title: "",
+      content: "",
+      status: "draft",
+      deletedAt: null,
+      shareToken: null,
+      createdAt: "",
+      updatedAt: "",
+      tags: [],
+    });
   }
 
   async function handleSave() {
     if (!editing) return;
     const body = {
-      title: editing.title || "Ghi chú mới",
+      title: editing.title.trim() || "Ghi chú mới",
       content: editing.content,
       status: editing.status,
       tagNames: editing.tags,
     };
-    if (editing.id && selectedId === editing.id) {
-      // Đang sửa note đã có → gọi update (giữ id)
-      await notesApi.update(editing.id, body);
+    if (editing.id) {
+      // Note đã có → update (giữ id)
+      const saved = await notesApi.update(editing.id, body);
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
+      queryClient.invalidateQueries({ queryKey: ["notes", "detail", editing.id] });
+      queryClient.invalidateQueries({ queryKey: ["tags"] });
+      setEditing({ ...saved });
+      setSelectedId(saved.id);
     } else {
-      // Draft mới chưa lưu → tạo mới
+      // Draft mới → tạo
       const saved = await notesApi.create(body);
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
+      queryClient.invalidateQueries({ queryKey: ["tags"] });
+      setEditing({ ...saved });
       setSelectedId(saved.id);
     }
-    setEditing(null);
-    queryClient.invalidateQueries({ queryKey: ["notes"] });
-    queryClient.invalidateQueries({ queryKey: ["notes", "detail", editing.id] });
-    queryClient.invalidateQueries({ queryKey: ["tags"] });
   }
 
   async function handleDelete() {

@@ -119,4 +119,13 @@ describe("Notes API (data-driven qua MSW)", () => {
     const list = await notesApi.list();
     expect(list.every((n) => n.title !== "Note cua B")).toBe(true);
   });
+
+  it("tạo note với title rỗng → backend trả 400 (không được phép)", async () => {
+    makeOwnerSession();
+    const { notesApi } = await import("@/features/notes/notes.api");
+    const { ApiError } = await import("@/lib/api-client");
+    await expect(
+      notesApi.create({ title: "", content: "abc" }),
+    ).rejects.toBeInstanceOf(ApiError);
+  });
 });

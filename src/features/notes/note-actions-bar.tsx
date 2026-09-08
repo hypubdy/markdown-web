@@ -49,6 +49,11 @@ export function NoteActionsBar({ note, onChanged, className }: NoteActionsBarPro
     ? `${window.location.origin}/public/notes/${note.shareToken}`
     : "";
 
+  // Note chưa lưu (draft) → chưa có id → không thể publish/chia sẻ
+  if (!note.id) {
+    return <span className="text-xs text-muted-foreground">Lưu để xuất bản / chia sẻ</span>;
+  }
+
   async function toggleStatus() {
     const next: NoteStatus = isPublished ? "draft" : "published";
     await updateStatus.mutateAsync(next);

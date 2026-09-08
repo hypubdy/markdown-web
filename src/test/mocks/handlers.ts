@@ -145,6 +145,10 @@ export const handlers = [
       status?: NoteStatus;
       tagNames?: string[];
     };
+    // Giống backend notes.schemas.ts: title bắt buộc ≥ 1 ký tự
+    if (!body?.title?.trim()) {
+      return fail(400, "Tiêu đề không được để trống", [{ field: "body.title" }]);
+    }
     const db = getDb();
     const note = makeNote(auth.id, {
       title: body?.title ?? "",
