@@ -1,0 +1,67 @@
+import { createBrowserRouter, Navigate } from "react-router-dom";
+import { RequireAdmin, RequireAuth, RedirectIfAuthenticated } from "@/app/guards";
+import { LoginPage } from "@/pages/login-page";
+import { RegisterPage } from "@/pages/register-page";
+import { NotesPage } from "@/pages/notes-page";
+import { TrashPage } from "@/pages/trash-page";
+import { TagsPage } from "@/pages/tags-page";
+import { AdminUsersPage } from "@/pages/admin-users-page";
+import { PublicSharePage } from "@/pages/public-share-page";
+import { NotFoundPage } from "@/pages/not-found-page";
+import type { ReactNode } from "react";
+
+function withAuth(el: ReactNode) {
+  return <RequireAuth>{el}</RequireAuth>;
+}
+
+function withAdmin(el: ReactNode) {
+  return <RequireAdmin>{el}</RequireAdmin>;
+}
+
+export const router = createBrowserRouter([
+  {
+    path: "/login",
+    element: (
+      <RedirectIfAuthenticated>
+        <LoginPage />
+      </RedirectIfAuthenticated>
+    ),
+  },
+  {
+    path: "/register",
+    element: (
+      <RedirectIfAuthenticated>
+        <RegisterPage />
+      </RedirectIfAuthenticated>
+    ),
+  },
+  {
+    path: "/",
+    element: withAuth(<NotesPage />),
+  },
+  {
+    path: "/trash",
+    element: withAuth(<TrashPage />),
+  },
+  {
+    path: "/tags",
+    element: withAuth(<TagsPage />),
+  },
+  {
+    path: "/admin/users",
+    element: withAdmin(<AdminUsersPage />),
+  },
+  {
+    path: "/public/notes/:shareToken",
+    element: <PublicSharePage />,
+  },
+  {
+    path: "/404",
+    element: <NotFoundPage />,
+  },
+  {
+    path: "*",
+    element: <Navigate to="/404" replace />,
+  },
+]);
+

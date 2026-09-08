@@ -1,0 +1,16 @@
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+
+export function NotFoundPage() {
+  return (
+    <div className="flex min-h-full flex-col items-center justify-center gap-4 p-4 text-center">
+      <p className="text-6xl font-bold text-muted-foreground">404</p>
+      <p className="text-sm text-muted-foreground">
+        Trang bạn tìm không tồn tại.
+      </p>
+      <Button asChild>
+        <Link to="/">Về trang ghi chú</Link>
+      </Button>
+    </div>
+  );
+}
