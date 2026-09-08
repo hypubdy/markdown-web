@@ -1,6 +1,7 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Mermaid } from "@/components/mermaid";
+import { useTheme } from "@/app/theme-context";
 import { cn } from "@/lib/utils";
 import { isValidElement, type ComponentPropsWithoutRef } from "react";
 
@@ -30,8 +31,14 @@ function textOf(children: unknown): string {
  * Render markdown thành HTML an toàn. GFM (bảng, gạch đầu dòng, task list) + Mermaid.
  * Cố ý dùng react-markdown (không dangerouslySetInnerHTML) để tránh XSS;
  * riêng khối ```mermaid được vẽ bằng thư viện mermaid (SVG sinh an toàn).
+ *
+ * Lưu ý: `prose` (typography plugin) mặc định tô khối code nền slate-800 (tối).
+ * Ta override `pre`/`code` về nền sáng để đồng bộ theme sáng của app.
  */
 export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+
   return (
     <div
       className={cn(
@@ -47,7 +54,29 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
             if (isMermaidBlock(props)) {
               return <Mermaid code={textOf(props.children)} />;
             }
-            return <code {...props} />;
+            return (
+              <code
+                className={cn(
+                  "rounded px-1 py-0.5 text-sm",
+                  isDark ? "bg-secondary text-secondary-foreground" : "bg-muted",
+                )}
+                {...props}
+              />
+            );
+          },
+          // Khối code fenced → nền sáng/tối theo theme, kèm scroll ngang ổn định
+          pre(props) {
+            return (
+              <pre
+                className={cn(
+                  "my-4 overflow-x-auto rounded-lg border p-3 text-sm leading-relaxed [scrollbar-gutter:stable]",
+                  isDark
+                    ? "border-secondary bg-secondary text-secondary-foreground"
+                    : "border-border bg-muted/40",
+                )}
+                {...props}
+              />
+            );
           },
         }}
       >

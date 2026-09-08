@@ -2,6 +2,7 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "@/features/auth/auth-context";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -76,7 +77,8 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
             </NavLink>
           ))}
         </nav>
-        <div className="flex justify-center border-t p-2">
+        <div className="flex flex-col items-center gap-1 border-t p-2">
+          <ThemeToggle />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -157,8 +159,9 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
         ))}
       </nav>
 
-      {/* Footer: user */}
+      {/* Footer: theme + user */}
       <div className="border-t p-2">
+        <ThemeToggle className="mb-1 w-full justify-start" />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left hover:bg-accent">

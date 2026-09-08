@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MarkdownPreview } from "@/components/markdown-preview";
+import { ThemeProvider } from "@/app/theme-context";
+
+function wrap(ui: React.ReactNode) {
+  return <ThemeProvider>{ui}</ThemeProvider>;
+}
 
 /**
  * Kiểm tra render markdown — đặc biệt nâng cấp: khối ```mermaid được bọc bởi
@@ -17,7 +22,7 @@ describe("MarkdownPreview", () => {
       "",
       "Inline `code` ở đây.",
     ].join("\n");
-    render(<MarkdownPreview content={md} />);
+    render(wrap(<MarkdownPreview content={md} />));
     expect(screen.getByText("1")).toBeTruthy(); // bảng
     expect(screen.getByText("Đã làm")).toBeTruthy(); // task list
     expect(screen.getByText("code")).toBeTruthy(); // inline code
@@ -25,7 +30,7 @@ describe("MarkdownPreview", () => {
 
   it("render khối ```mermaid thành component Mermaid (không là code plain)", () => {
     const md = "```mermaid\nflowchart LR\n  A --> B\n```";
-    render(<MarkdownPreview content={md} />);
+    render(wrap(<MarkdownPreview content={md} />));
     // Không được render như <code> thường
     expect(screen.queryByText("flowchart LR")).toBeNull();
     // Có vùng loading "Đang vẽ sơ đồ Mermaid…" trước khi mermaid render xong
@@ -34,7 +39,7 @@ describe("MarkdownPreview", () => {
 
   it("render khối code ngôn ngữ khác vẫn là code plain", () => {
     const md = "```js\nconst x = 1;\n```";
-    render(<MarkdownPreview content={md} />);
+    render(wrap(<MarkdownPreview content={md} />));
     expect(screen.getByText("const x = 1;")).toBeTruthy();
   });
 });

@@ -2,6 +2,7 @@ import { Route, Routes, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { AuthProvider } from "@/features/auth/auth-context";
+import { ThemeProvider } from "@/app/theme-context";
 import { LoginPage } from "@/pages/login-page";
 import { RegisterPage } from "@/pages/register-page";
 import { NotesPage } from "@/pages/notes-page";
@@ -82,11 +83,13 @@ export function renderTestApp(initialRoute = "/") {
   });
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <MemoryRouter initialEntries={[initialRoute]}>
-          <AppRoutes />
-        </MemoryRouter>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <MemoryRouter initialEntries={[initialRoute]}>
+            <AppRoutes />
+          </MemoryRouter>
+        </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

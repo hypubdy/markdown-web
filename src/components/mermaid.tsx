@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
+import { useTheme } from "@/app/theme-context";
 import { cn } from "@/lib/utils";
 
 export interface MermaidProps {
@@ -18,8 +19,10 @@ interface MermaidApi {
  * - Lazy-load `mermaid` (dynamic import) → tách chunk riêng cho build.
  * - `render()` tạo SVG chuỗi an toàn (mermaid tự escape), nhúng qua dangerouslySetInnerHTML.
  * - Có trạng thái đang render / lỗi để UI không crash khi diagram sai cú pháp.
+ * - Theme (dark/light) đồng bộ theo app.
  */
 export function Mermaid({ code, className }: MermaidProps) {
+  const { theme } = useTheme();
   const id = useId().replace(/[:]/g, "");
   const containerRef = useRef<HTMLDivElement>(null);
   const [svg, setSvg] = useState<string | null>(null);
@@ -37,7 +40,7 @@ export function Mermaid({ code, className }: MermaidProps) {
         mermaid.initialize({
           startOnLoad: false,
           securityLevel: "strict",
-          theme: "default",
+          theme: theme === "dark" ? "dark" : "default",
           fontFamily: "inherit",
         });
         const { svg: rendered } = await mermaid.render(`mdn_mermaid_${id}`, code);
@@ -50,7 +53,7 @@ export function Mermaid({ code, className }: MermaidProps) {
     return () => {
       cancelled = true;
     };
-  }, [id, code]);
+  }, [id, code, theme]);
 
   if (error) {
     return (

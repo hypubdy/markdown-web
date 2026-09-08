@@ -68,3 +68,16 @@
     @apply bg-background text-foreground antialiased;
   }
 }
+
+/* Override `prose` (typography): khối code hiển thị tốt ở cả light/dark.
+   MarkdownPreview đã tự gán nền qua component; ở đây chỉ chặn slate-800 tối mặc định
+   khi ở light, và để `prose` xử lý màu chữ đúng theme. */
+.prose :where(pre):not(:where([class~="not-prose"] *)) {
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+
+.prose :where(code):not(:where([class~="not-prose"] *))::before,
+.prose :where(code):not(:where([class~="not-prose"] *))::after {
+  content: none;
+}

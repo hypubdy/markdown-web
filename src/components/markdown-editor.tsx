@@ -2,7 +2,8 @@ import { useMemo } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { languages } from "@codemirror/language-data";
-import { githubLight } from "@uiw/codemirror-theme-github";
+import { githubLight, githubDark } from "@uiw/codemirror-theme-github";
+import { useTheme } from "@/app/theme-context";
 import { cn } from "@/lib/utils";
 import type { Extension } from "@codemirror/state";
 
@@ -19,7 +20,7 @@ export interface MarkdownEditorProps {
 /**
  * Editor markdown dựa trên CodeMirror 6:
  * - số dòng (lineNumbers), syntax highlight markdown + code ngôn ngữ lồng (tsx, js, mermaid...).
- * - theme githubLight (như ảnh chụp).
+ * - theme theo app (githubLight / githubDark) — đồng bộ dark/light.
  * - Hỗ trợ GFM markdown (bảng, task list) qua lang-markdown.
  */
 export function MarkdownEditor({
@@ -29,6 +30,9 @@ export function MarkdownEditor({
   placeholder,
   readOnly = false,
 }: MarkdownEditorProps) {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+
   const extensions = useMemo<Extension[]>(
     () => [
       markdown({
@@ -45,7 +49,7 @@ export function MarkdownEditor({
       value={value}
       onChange={onChange}
       extensions={extensions}
-      theme={githubLight}
+      theme={isDark ? githubDark : githubLight}
       height="100%"
       style={{ height: "100%", fontSize: 13 }}
       className={cn("h-full", className)}

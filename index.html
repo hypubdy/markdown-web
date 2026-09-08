@@ -5,6 +5,19 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Markdown Notes — DeepSeek Harness</title>
+    <script>
+      // Áp dụng theme đã lưu (hoặc theo hệ thống) TRƯỚC khi React mount → không flash
+      (function () {
+        try {
+          var stored = localStorage.getItem("mdn_theme");
+          var dark =
+            stored === "dark" ||
+            (!stored && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          if (dark) document.documentElement.classList.add("dark");
+          document.documentElement.style.colorScheme = dark ? "dark" : "light";
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body class="h-full">
     <div id="root" class="h-full"></div>
