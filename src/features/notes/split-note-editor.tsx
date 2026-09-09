@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MarkdownEditor } from "@/components/markdown-editor";
 import { MarkdownPreview } from "@/components/markdown-preview";
 import { Button } from "@/components/ui/button";
@@ -51,6 +51,18 @@ export function SplitNoteEditor({
   const [mode, setMode] = useState<EditorMode>("preview");
   const [tagInput, setTagInput] = useState("");
 
+  // Ctrl/Cmd+S để lưu — giữ đúng lời nhắc hiển thị trên nút lưu
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        onSave?.();
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [onSave]);
+
   function commitTag() {
     const t = tagInput.trim().replace(/^#/, "");
     if (!t) return;
@@ -60,8 +72,8 @@ export function SplitNoteEditor({
 
   return (
     <div className={cn("flex h-full min-h-0 flex-col", className)}>
-      {/* Header: tiêu đề + các nút chế độ xem */}
-      <div className="flex items-start justify-between gap-3 border-b px-5 py-3">
+      {/* Header: tiêu đề + các nút chế độ xem + lưu */}
+      <div className="flex items-center justify-between gap-3 border-b px-5 py-2.5">
         <input
           value={note.title}
           onChange={(e) => onChangeTitle(e.target.value)}
@@ -90,6 +102,21 @@ export function SplitNoteEditor({
           >
             <Eye className="h-4 w-4" />
           </ModeButton>
+          {onSave && (
+            <>
+              <div className="mx-1.5 h-5 w-px bg-border" />
+              <Button
+                size="sm"
+                onClick={onSave}
+                disabled={saving}
+                className="gap-1.5"
+                title="Ctrl+S để lưu"
+              >
+                {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                {saving ? "Đang lưu…" : "Lưu thay đổi"}
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -134,8 +161,20 @@ export function SplitNoteEditor({
             <Plus className="h-3.5 w-3.5" />
           </Button>
         </div>
-        {/* Thao tác publish / chia sẻ */}
+        {/* Thao tác publish / chia sẻ + xoá */}
         <NoteActionsBar note={note} onChanged={onChanged} className="ml-auto" />
+        {note.id && onDelete && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+            onClick={onDelete}
+            title="Xoá ghi chú"
+            aria-label="Xoá ghi chú"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       {/* Thân chính: tuỳ theo chế độ */}
@@ -155,35 +194,6 @@ export function SplitNoteEditor({
           </div>
         )}
       </div>
-
-      {/* Footer: lưu + xoá (gọn) */}
-      {(onSave || onDelete) && (
-        <div className="flex items-center justify-between border-t px-5 py-2">
-          <div>
-            {onDelete && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onDelete}
-                className="text-muted-foreground hover:text-destructive"
-              >
-                <Trash2 className="h-4 w-4" /> Xoá
-              </Button>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">
-              Ctrl+S để lưu
-            </span>
-            {onSave && (
-              <Button size="sm" onClick={onSave} disabled={saving}>
-                {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-                Lưu thay đổi
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

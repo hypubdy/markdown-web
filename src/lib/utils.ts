@@ -25,3 +25,17 @@ export function truncate(value: string, max = 80): string {
   if (value.length <= max) return value;
   return `${value.slice(0, Math.floor(max / 2))}…${value.slice(-Math.floor(max / 2))}`;
 }
+
+/** Tạo excerpt dễ đọc từ Markdown để hiển thị trong danh sách note. */
+export function markdownExcerpt(value: string, max = 110): string {
+  return truncate(
+    value
+      .replace(/```[\s\S]*?```/g, " ")
+      .replace(/!\[.*?\]\(.*?\)/g, " ")
+      .replace(/[#>*_`~\-]/g, " ")
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+      .replace(/\s+/g, " ")
+      .trim(),
+    max,
+  );
+}

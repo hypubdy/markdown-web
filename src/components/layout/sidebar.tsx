@@ -2,7 +2,7 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "@/features/auth/auth-context";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { useTheme } from "@/app/theme-context";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +21,8 @@ import {
   Shield,
   PanelLeft,
   PanelLeftClose,
+  Moon,
+  Sun,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -39,6 +41,7 @@ export interface SidebarProps {
 
 export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const items = NAV_ITEMS.filter(
     (item) => !item.adminOnly || user?.role === "admin",
   );
@@ -77,8 +80,7 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
             </NavLink>
           ))}
         </nav>
-        <div className="flex flex-col items-center gap-1 border-t p-2">
-          <ThemeToggle />
+        <div className="flex justify-center border-t p-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -99,6 +101,10 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                 </span>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={toggleTheme}>
+                {theme === "dark" ? <Sun /> : <Moon />}
+                {theme === "dark" ? "Chế độ sáng" : "Chế độ tối"}
+              </DropdownMenuItem>
               {user?.role === "admin" && (
                 <DropdownMenuItem asChild>
                   <NavLink to="/admin/users">
@@ -159,9 +165,8 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
         ))}
       </nav>
 
-      {/* Footer: theme + user */}
+      {/* Footer: user + theme trong menu tài khoản */}
       <div className="border-t p-2">
-        <ThemeToggle className="mb-1 w-full justify-start" />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left hover:bg-accent">
@@ -179,6 +184,10 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
               {user?.role === "admin" ? "Quản trị viên" : "Người dùng"}
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={toggleTheme}>
+              {theme === "dark" ? <Sun /> : <Moon />}
+              {theme === "dark" ? "Chế độ sáng" : "Chế độ tối"}
+            </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <NavLink to="/admin/users">
                 <Settings /> Cài đặt

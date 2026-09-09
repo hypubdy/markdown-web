@@ -28,8 +28,14 @@ export function NotesPage() {
 
   /** Bản ghi đang được soạn (draft mới hoặc bản sao của note đã chọn) */
   const [editing, setEditing] = useState<SafeNote | null>(null);
+  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   /** true khi đang tải note khác (chuyển note) → hiện Skeleton, tránh vỡ layout */
   const [switching, setSwitching] = useState(false);
+
+  const serializeNote = (note: SafeNote) =>
+    JSON.stringify({ title: note.title, content: note.content, status: note.status, tags: note.tags });
+  const isDirty = !!editing && (!editing.id || serializeNote(editing) !== savedSnapshot);
 
   const filters = {
     q: search || undefined,
@@ -50,6 +56,7 @@ export function NotesPage() {
   useEffect(() => {
     if (liveNote && (!editing || editing.id !== liveNote.id)) {
       setEditing({ ...liveNote });
+      setSavedSnapshot(serializeNote(liveNote));
     }
     // note đã load xong → hết trạng thái chuyển note
     setSwitching(false);
@@ -73,6 +80,7 @@ export function NotesPage() {
     // Tạo DRAFT cục bộ (chưa gọi API) — chỉ POST khi người dùng bấm Lưu.
     // Điều này tránh lỗi 400 "Tiêu đề không được để trống" khi đang soạn note trống.
     setSelectedId(null);
+    setSavedSnapshot(null);
     setEditing({
       id: "",
       ownerId: "",
@@ -88,7 +96,9 @@ export function NotesPage() {
   }
 
   async function handleSave() {
-    if (!editing) return;
+    if (!editing || saving || !isDirty) return;
+    setSaving(true);
+    try {
     const body = {
       title: editing.title.trim() || "Ghi chú mới",
       content: editing.content,
@@ -109,7 +119,11 @@ export function NotesPage() {
       queryClient.invalidateQueries({ queryKey: ["notes"] });
       queryClient.invalidateQueries({ queryKey: ["tags"] });
       setEditing({ ...saved });
+      setSavedSnapshot(serializeNote(saved));
       setSelectedId(saved.id);
+    }
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -213,7 +227,6 @@ export function NotesPage() {
                 title={n.title}
                 tags={n.tags}
                 timestamp={n.updatedAt}
-                snippet={n.title}
                 active={selectedId === n.id}
                 onClick={() => handleSelect(n)}
               />
@@ -243,6 +256,7 @@ export function NotesPage() {
               }
               onChangeStatus={(s) => patchEditing({ status: s })}
               onSave={handleSave}
+               saving={saving}
               onDelete={handleDelete}
               onChanged={refreshCurrent}
             />
