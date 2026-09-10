@@ -219,16 +219,29 @@ jobs:
       - name: Build application
         run: npm run build
 
-      # Vite chỉ nhúng biến có tiền tố VITE_ vào bundle, và chỉ tại thời điểm build.
+      # Vite chỉ nhúng vào bundle những biến mà app thực sự đọc qua import.meta.env.
+      # Biến như VITE_API_TARGET (chỉ dùng cho dev proxy trong vite.config.ts) không
+      # bao giờ vào bundle → không được coi là lỗi.
       # Step này xác nhận giá trị thật sự đã nằm trong dist/ — nếu không, app sẽ
       # gọi /api vào chính domain Pages (404) mà không báo lỗi gì.
       - name: Verify env baked into bundle
         run: |
           set -euo pipefail
-          if [ ! -s "$ENV_FILE_PATH" ]; then
-            echo "::warning::Không có biến env nào lúc build — bundle sẽ gọi /api vào chính domain Pages."
-            exit 0
+          if [ -s "$ENV_FILE_PATH" ]; then
+            env_file="$ENV_FILE_PATH"
+          else
+            env_file="/dev/null"
+            echo "::warning::$ENV_FILE_PATH trống — không có biến env nào lúc build."
           fi
+
+          # Danh sách biến app thật sự đọc qua import.meta.env (lấy từ mã nguồn).
+          # Biến không nằm trong danh sách này — ví dụ VITE_API_TARGET chỉ dùng cho
+          # dev proxy trong vite.config.ts — không bao giờ vào bundle, không phải lỗi.
+          used="$(grep -rhoE 'import\.meta\.env\.[A-Za-z_][A-Za-z0-9_]*' src 2>/dev/null \
+            | sed 's/.*\.//' | sort -u \
+            | grep -vE '^(MODE|BASE_URL|DEV|PROD|SSR)$' || true)"
+          used_flat=" $(printf '%s' "$used" | tr '\n' ' ') "
+          echo "Biến bundle đọc lúc build:${used_flat}"
 
           dq='"'
           sq="'"
@@ -244,16 +257,30 @@ jobs:
             value="$(printf '%s' "$value" | sed -e 's/[[:space:]]*$//')"
             [ -n "$value" ] || continue
 
+            in_use=0
+            case "$used_flat" in *" $name "*) in_use=1 ;; esac
+            if [ "$in_use" -eq 0 ]; then
+              echo "BỎ QUA $name → app không đọc biến này trong bundle (ví dụ: chỉ dùng cho dev proxy)."
+              continue
+            fi
+
             if grep -RqF -- "$value" dist; then
               echo "OK   $name → đã nhúng vào bundle."
             else
-              echo "::error::$name KHÔNG được nhúng vào bundle. Kiểm tra: (1) tên phải có tiền tố VITE_, (2) biến phải có mặt lúc build trên CI — env khai trong Cloudflare Pages dashboard KHÔNG áp dụng cho bundle build sẵn ở GitHub Actions."
+              echo "::error::$name có giá trị nhưng KHÔNG thấy trong dist/ — app đọc biến này nên bundle sẽ chạy sai. Kiểm tra lại tên biến và giá trị."
               missing=1
             fi
-          done < "$ENV_FILE_PATH"
+          done < "$env_file"
+
+          # Chiều ngược lại: app đọc biến mà lúc build không có giá trị.
+          for n in $used; do
+            if ! grep -qE "^[[:space:]]*(export[[:space:]]+)?${n}[[:space:]]*=[[:space:]]*[^[:space:]]" "$ENV_FILE_PATH" 2>/dev/null; then
+              echo "::warning::App đọc $n lúc build nhưng $ENV_FILE_PATH không có giá trị → bundle dùng mặc định. Với VITE_API_BASE: app sẽ gọi /api vào chính domain Pages (chỉ đúng nếu có Pages Function proxy)."
+            fi
+          done
 
           [ "$missing" -eq 0 ] || exit 1
-          echo "Tất cả biến trong $ENV_FILE_PATH đều đã có trong bundle."
+          echo "Kiểm tra env xong."
 
       # Xoá env khỏi workspace ngay sau build (chạy cả khi build lỗi).
       - name: Remove env file
