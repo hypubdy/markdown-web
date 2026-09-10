@@ -1,10 +1,11 @@
 import { apiRequest } from "@/lib/api-client";
-import { authToken } from "@/lib/auth-token";
+import { resolveAccessToken } from "@/lib/auth-token";
 import type { TagCount } from "@/types";
 
 const PATH = "/api/v1/tags";
 
-const token = () => authToken.get();
+/** Token có thể là Promise — apiRequest tự await (Clerk lấy token mới mỗi request) */
+const token = () => resolveAccessToken();
 
 export const tagsApi = {
   /** GET /tags — tags của mình kèm count note đang sống */

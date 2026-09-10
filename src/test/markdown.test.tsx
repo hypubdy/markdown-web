@@ -37,6 +37,20 @@ describe("MarkdownPreview", () => {
     expect(screen.getByText(/Đang vẽ sơ đồ Mermaid/)).toBeTruthy();
   });
 
+  it("render HTML embedded trong Markdown", () => {
+    const md = '<div data-testid="html-preview"><strong>Nội dung HTML</strong></div>';
+    render(wrap(<MarkdownPreview content={md} />));
+    expect(screen.getByTestId("html-preview")).toBeTruthy();
+    expect(screen.getByText("Nội dung HTML").tagName).toBe("STRONG");
+  });
+
+  it("không thực thi script HTML", () => {
+    const md = '<script>window.__markdownPreviewScript = true</script><p>An toàn</p>';
+    render(wrap(<MarkdownPreview content={md} />));
+    expect(screen.getByText("An toàn")).toBeTruthy();
+    expect((window as Window & { __markdownPreviewScript?: boolean }).__markdownPreviewScript).toBeUndefined();
+  });
+
   it("render khối code ngôn ngữ khác vẫn là code plain", () => {
     const md = "```js\nconst x = 1;\n```";
     render(wrap(<MarkdownPreview content={md} />));

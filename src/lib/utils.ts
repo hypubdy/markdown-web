@@ -32,7 +32,7 @@ export function markdownExcerpt(value: string, max = 110): string {
     value
       .replace(/```[\s\S]*?```/g, " ")
       .replace(/!\[.*?\]\(.*?\)/g, " ")
-      .replace(/[#>*_`~\-]/g, " ")
+      .replace(/[#>*_`~-]/g, " ")
       .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
       .replace(/\s+/g, " ")
       .trim(),

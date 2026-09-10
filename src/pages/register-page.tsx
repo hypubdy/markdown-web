@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 import { RegisterForm } from "@/features/auth/register-form";
+import { ClerkSsoPanel } from "@/features/auth/clerk-sso-panel";
+import { isClerkEnabled } from "@/lib/auth-mode";
 import { FileText } from "lucide-react";
 
 export function RegisterPage() {
@@ -11,7 +13,11 @@ export function RegisterPage() {
         </span>
         <span className="text-lg font-semibold">Markdown Notes</span>
       </Link>
-      <RegisterForm />
+      {isClerkEnabled ? (
+        <ClerkSsoPanel mode="register" />
+      ) : (
+        <RegisterForm />
+      )}
     </div>
   );
 }

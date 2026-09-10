@@ -1,5 +1,5 @@
 import { apiRequest } from "@/lib/api-client";
-import { authToken } from "@/lib/auth-token";
+import { resolveAccessToken } from "@/lib/auth-token";
 import type {
   SafeUser,
   UserProfile,
@@ -9,7 +9,8 @@ import type {
 
 const PATH = "/api/v1/users";
 
-const token = () => authToken.get();
+/** Token có thể là Promise — apiRequest tự await (Clerk lấy token mới mỗi request) */
+const token = () => resolveAccessToken();
 
 export const usersApi = {
   /** GET /users — danh sách user (admin). Lọc role / tìm q. */

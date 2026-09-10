@@ -1,5 +1,5 @@
 import { apiRequest } from "@/lib/api-client";
-import { authToken } from "@/lib/auth-token";
+import { resolveAccessToken } from "@/lib/auth-token";
 import type {
   CreateNoteBody,
   Note,
@@ -12,7 +12,8 @@ import type {
 
 const PATH = "/api/v1/notes";
 
-const token = () => authToken.get();
+/** Token có thể là Promise — apiRequest tự await (Clerk lấy token mới mỗi request) */
+const token = () => resolveAccessToken();
 
 /** Query dùng chung cho danh sách/trash — loại bỏ giá trị rỗng */
 function cleanQuery(q: NoteListParams) {

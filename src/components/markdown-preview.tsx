@@ -1,5 +1,6 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
 import { Mermaid } from "@/components/mermaid";
 import { useTheme } from "@/app/theme-context";
 import { cn } from "@/lib/utils";
@@ -48,6 +49,9 @@ export function MarkdownPreview({ content, className }: MarkdownPreviewProps) {
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
+        // Cho phép HTML hợp lệ (div, table, details, style inline...) hiển thị như HTML.
+        // rehype-raw vẫn đi qua cây ReactMarkdown nên script/event handler không được thực thi.
+        rehypePlugins={[rehypeRaw]}
         components={{
           // Override code để vẽ mermaid, các ngôn ngữ khác giữ nguyên
           code(props) {

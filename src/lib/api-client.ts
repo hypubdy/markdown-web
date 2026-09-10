@@ -23,7 +23,11 @@ export interface ApiRequestOptions {
   /** Query string (không cần dấu "?") */
   query?: Record<string, string | number | boolean | undefined>;
   body?: unknown;
-  token?: string | null;
+  /**
+   * Token Bearer. Chấp nhận chuỗi hoặc Promise — vì với Clerk (SSO) token là
+   * session token NGẮN HẠN nên các api.* truyền `resolveAccessToken()` (async).
+   */
+  token?: string | null | Promise<string | null>;
   /** Không gắn header Content-Type (vd GET /raw trả text/markdown) */
   raw?: boolean;
   signal?: AbortSignal;
@@ -54,8 +58,11 @@ export async function apiRequest<T>(
   const { method = "GET", query, body, token, raw = false, signal } = options;
   const url = `${API_BASE}${buildPath(path, query)}`;
 
+  // Token có thể là Promise (Clerk getToken) — chờ resolve trước khi gắn header
+  const resolvedToken = token ? await token : null;
+
   const headers: Record<string, string> = {};
-  if (token) headers.Authorization = `Bearer ${token}`;
+  if (resolvedToken) headers.Authorization = `Bearer ${resolvedToken}`;
   if (!raw && body !== undefined) headers["Content-Type"] = "application/json";
 
   const res = await fetch(url, {

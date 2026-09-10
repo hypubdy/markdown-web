@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 import { RequireAdmin, RequireAuth, RedirectIfAuthenticated } from "@/app/guards";
 import { LoginPage } from "@/pages/login-page";
 import { RegisterPage } from "@/pages/register-page";
+import { SsoCallbackPage } from "@/pages/sso-callback-page";
 import { NotesPage } from "@/pages/notes-page";
 import { TrashPage } from "@/pages/trash-page";
 import { TagsPage } from "@/pages/tags-page";
@@ -54,6 +55,11 @@ export const router = createBrowserRouter([
   {
     path: "/public/notes/:shareToken",
     element: <PublicSharePage />,
+  },
+  {
+    // Trang trung gian luồng SSO Clerk (OAuth quay về đây để hoàn tất phiên)
+    path: "/sso-callback",
+    element: <SsoCallbackPage />,
   },
   {
     path: "/404",

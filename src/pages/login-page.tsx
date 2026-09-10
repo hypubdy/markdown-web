@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 import { LoginForm } from "@/features/auth/login-form";
+import { ClerkSsoPanel } from "@/features/auth/clerk-sso-panel";
+import { isClerkEnabled } from "@/lib/auth-mode";
 import { FileText } from "lucide-react";
 
 export function LoginPage() {
@@ -11,10 +13,16 @@ export function LoginPage() {
         </span>
         <span className="text-lg font-semibold">Markdown Notes</span>
       </Link>
-      <LoginForm />
-      <p className="text-xs text-muted-foreground">
-        Tài khoản demo: admin@example.com / admin123
-      </p>
+      {isClerkEnabled ? (
+        <ClerkSsoPanel mode="login" />
+      ) : (
+        <>
+          <LoginForm />
+          <p className="text-xs text-muted-foreground">
+            Tài khoản demo: admin@example.com / admin123
+          </p>
+        </>
+      )}
     </div>
   );
 }

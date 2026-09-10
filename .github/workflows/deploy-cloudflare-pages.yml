@@ -1,0 +1,86 @@
+name: Deploy to Cloudflare Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-pages-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # File này do CI tự sinh từ secrets, KHÔNG commit (đã có trong .gitignore).
+  ENV_FILE_PATH: .env.production.local
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.deployment-url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # ── Toàn bộ env nằm trong 1 secret duy nhất: ENV_FILE ──────────────────
+      # Dán nguyên nội dung file .env (nhiều dòng) vào secret ENV_FILE.
+      # Secret lẻ (VITE_API_BASE, VITE_CLERK_PUBLISHABLE_KEY) là tuỳ chọn,
+      # nếu có giá trị thì ghi sau → ghi đè giá trị cùng tên trong ENV_FILE.
+      - name: Write env file from secrets
+        env:
+          ENV_FILE: ${{ secrets.ENV_FILE }}
+          VITE_API_BASE: ${{ secrets.VITE_API_BASE }}
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
+        run: |
+          set -euo pipefail
+          : > "$ENV_FILE_PATH"
+
+          if [ -n "${ENV_FILE:-}" ]; then
+            # tr -d '\r' để an toàn khi dán nội dung kiểu Windows (CRLF).
+            printf '%s\n' "$ENV_FILE" | tr -d '\r' >> "$ENV_FILE_PATH"
+          fi
+
+          for name in VITE_API_BASE VITE_CLERK_PUBLISHABLE_KEY; do
+            value="$(printenv "$name" || true)"
+            if [ -n "$value" ]; then
+              printf '%s=%s\n' "$name" "$(printf '%s' "$value" | tr -d '\r')" >> "$ENV_FILE_PATH"
+            fi
+          done
+
+          if [ -s "$ENV_FILE_PATH" ]; then
+            echo "Đã tạo $ENV_FILE_PATH với các biến (chỉ in tên, không in giá trị):"
+            grep -oE '^[A-Za-z_][A-Za-z0-9_]*' "$ENV_FILE_PATH" | sort -u || true
+          else
+            echo "Không có secret nào được cấu hình — build với env mặc định."
+          fi
+
+      - name: Build application
+        run: npm run build
+
+      # Xoá env khỏi workspace ngay sau build (chạy cả khi build lỗi).
+      - name: Remove env file
+        if: always()
+        run: rm -f "$ENV_FILE_PATH"
+
+      - name: Deploy to Cloudflare Pages
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }} --branch=main
+          wranglerVersion: latest

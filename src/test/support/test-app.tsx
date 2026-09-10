@@ -10,6 +10,7 @@ import { TrashPage } from "@/pages/trash-page";
 import { TagsPage } from "@/pages/tags-page";
 import { AdminUsersPage } from "@/pages/admin-users-page";
 import { PublicSharePage } from "@/pages/public-share-page";
+import { SsoCallbackPage } from "@/pages/sso-callback-page";
 import { NotFoundPage } from "@/pages/not-found-page";
 import { RequireAuth, RequireAdmin, RedirectIfAuthenticated } from "@/app/guards";
 
@@ -66,6 +67,7 @@ function AppRoutes() {
         }
       />
       <Route path="/public/notes/:shareToken" element={<PublicSharePage />} />
+      <Route path="/sso-callback" element={<SsoCallbackPage />} />
       <Route path="/404" element={<NotFoundPage />} />
       <Route path="*" element={<Navigate to="/404" replace />} />
     </Routes>
