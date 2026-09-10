@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      debug_env:
+        description: "Debug: in cấu trúc .env sinh từ secret (chỉ bật khi cần)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -41,7 +46,7 @@ jobs:
             missing=1
           fi
           if [ -z "${CF_PAGES_PROJECT}" ]; then
-            echo "::error::Thiếu variable CLOUDFLARE_PAGES_PROJECT — phải nằm ở tab Variables (không phải tab Secrets) và trùng tên project Pages."
+            echo "::error::Thiếu variable CLOUDFLARE_PAGES_PROJECT — phải nằm ở tab Variables (không phải tab Secrets)."
             missing=1
           fi
           if [ "$missing" -ne 0 ]; then
@@ -52,6 +57,63 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v7
+
+      # Cloudflare KHÔNG tự tạo Pages project khi deploy → phải có project trước.
+      # Idempotent: đã có thì bỏ qua, chưa có thì tạo, tạo lỗi thì in chẩn đoán.
+      # Đặt trước bước build để phát hiện sai account/tên trong vài giây.
+      - name: Ensure Pages project exists
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+          # Phải khớp branch kích hoạt workflow và --branch ở step deploy.
+          PRODUCTION_BRANCH: main
+        run: |
+          set -euo pipefail
+          base="https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}"
+          auth="Authorization: Bearer ${CF_API_TOKEN}"
+
+          get() { curl -sS -H "$auth" "$1"; }
+          ok() { printf '%s' "$1" | grep -Eq '"success"[[:space:]]*:[[:space:]]*true'; }
+
+          existing="$(get "${base}/pages/projects/${CF_PAGES_PROJECT}")"
+          if ok "$existing"; then
+            echo "Pages project '${CF_PAGES_PROJECT}' đã tồn tại."
+            exit 0
+          fi
+
+          echo "Không thấy project '${CF_PAGES_PROJECT}' trong account của token → tạo mới (production branch: ${PRODUCTION_BRANCH})."
+          created="$(curl -sS -H "$auth" -H 'Content-Type: application/json' \
+            --data "{\"name\":\"${CF_PAGES_PROJECT}\",\"production_branch\":\"${PRODUCTION_BRANCH}\"}" \
+            "${base}/pages/projects")"
+
+          if ok "$created"; then
+            echo "Đã tạo Pages project '${CF_PAGES_PROJECT}'."
+            exit 0
+          fi
+
+          echo "::error::Không tạo được Pages project '${CF_PAGES_PROJECT}'."
+          printf '%s\n' "$created"
+
+          echo ""
+          echo "── CHẨN ĐOÁN ────────────────────────────────────────────"
+          echo "Pages project đang có trong account mà token thuộc về:"
+          projects="$(get "${base}/pages/projects?per_page=100" || true)"
+          if command -v jq >/dev/null 2>&1; then
+            printf '%s' "$projects" | jq -r '.result[]? | "  - \(.name)"' || true
+          else
+            printf '%s' "$projects" | grep -o '"name":"[^"]*"' || true
+          fi
+
+          echo "Worker đang có (trường hợp bạn tạo Worker thay vì Pages project):"
+          workers="$(get "${base}/workers/scripts" || true)"
+          if command -v jq >/dev/null 2>&1; then
+            printf '%s' "$workers" | jq -r '.result[]? | "  - \(.id)"' || true
+          else
+            printf '%s' "$workers" | grep -o '"id":"[^"]*"' || true
+          fi
+          echo "Nếu tên project nằm trong danh sách Worker phía trên, nghĩa là bạn đã tạo Worker — hãy tạo Pages project cùng tên, hoặc chuyển workflow sang 'wrangler deploy'."
+          exit 1
 
       # Node >= 22 là bắt buộc: Wrangler v4 (dùng bởi wrangler-action@v4) yêu cầu Node >= 22.
       # Dùng 24 (Active LTS) — cũng là bản đã build thử thành công ở local.
@@ -96,8 +158,102 @@ jobs:
             echo "::warning::Không có secret env nào — app sẽ build với API_BASE rỗng (gọi /api cùng domain)."
           fi
 
+      # ── Debug .env sinh từ secret ───────────────────────────────────────────
+      # Chỉ chạy khi vào Actions → Run workflow và tick ô debug_env.
+      # Không in giá trị của biến không phải VITE_ (những biến đó có thể là secret thật).
+      # Biến VITE_* vốn đã công khai trong bundle JS nên in được, và in dạng tách
+      # ký tự để không bị cơ chế mask của GitHub thay bằng ***.
+      - name: Debug env file
+        if: ${{ github.event.inputs.debug_env == 'true' }}
+        run: |
+          if [ ! -f "$ENV_FILE_PATH" ]; then
+            echo "Không có file $ENV_FILE_PATH."
+            exit 0
+          fi
+
+          dq='"'
+          sq="'"
+          echo "::warning::Đang chạy ở chế độ debug env — nội dung dưới đây chỉ để chẩn đoán."
+          echo "== $ENV_FILE_PATH =="
+          echo "số dòng: $(wc -l < "$ENV_FILE_PATH") | số byte: $(wc -c < "$ENV_FILE_PATH")"
+          echo ""
+
+          while IFS= read -r line || [ -n "$line" ]; do
+            case "$line" in
+              '') echo "(dòng trống)"; continue ;;
+              '#'*) echo "(comment — không in nội dung)"; continue ;;
+            esac
+
+            name="${line%%=*}"
+            name="${name#export }"
+            value="${line#*=}"
+            value="${value%$dq}"; value="${value#$dq}"
+            value="${value%$sq}"; value="${value#$sq}"
+            value="$(printf '%s' "$value" | sed -e 's/[[:space:]]*$//')"
+
+            echo "BIẾN: [$name]"
+            echo "  độ dài giá trị : ${#value} ký tự"
+            echo "  sha256 (16 đầu): $(printf '%s' "$value" | sha256sum | cut -c1-16)"
+            case "$value" in
+              "") echo "  ⚠ giá trị RỖNG — Vite sẽ coi như không có biến này" ;;
+              *"'"*|*'"'*) echo "  ⚠ giá trị còn chứa dấu nháy" ;;
+            esac
+            case "$value" in
+              *$'\r'*) echo "  ⚠ giá trị còn ký tự CR (\\r)" ;;
+            esac
+            case "$name" in
+              VITE_*)
+                echo "  giá trị (đã tách ký tự để vượt mask): $(printf '%s' "$value" | sed 's/./& /g')"
+                ;;
+              *)
+                echo "  giá trị: KHÔNG in — chỉ biến có tiền tố VITE_ mới được nhúng vào bundle."
+                ;;
+            esac
+            echo ""
+          done < "$ENV_FILE_PATH"
+
+          if ! grep -qE '^[[:space:]]*(export[[:space:]]+)?VITE_API_BASE=' "$ENV_FILE_PATH"; then
+            echo "::warning::Không thấy dòng VITE_API_BASE trong $ENV_FILE_PATH — app sẽ gọi /api vào chính domain Pages."
+          fi
+
       - name: Build application
         run: npm run build
+
+      # Vite chỉ nhúng biến có tiền tố VITE_ vào bundle, và chỉ tại thời điểm build.
+      # Step này xác nhận giá trị thật sự đã nằm trong dist/ — nếu không, app sẽ
+      # gọi /api vào chính domain Pages (404) mà không báo lỗi gì.
+      - name: Verify env baked into bundle
+        run: |
+          set -euo pipefail
+          if [ ! -s "$ENV_FILE_PATH" ]; then
+            echo "::warning::Không có biến env nào lúc build — bundle sẽ gọi /api vào chính domain Pages."
+            exit 0
+          fi
+
+          dq='"'
+          sq="'"
+          missing=0
+          while IFS= read -r line || [ -n "$line" ]; do
+            case "$line" in ''|'#'*) continue ;; esac
+            name="${line%%=*}"
+            name="${name#export }"
+            value="${line#*=}"
+            # bỏ nháy bao quanh giá trị (dotenv cho phép "..." hoặc '...')
+            value="${value%$dq}"; value="${value#$dq}"
+            value="${value%$sq}"; value="${value#$sq}"
+            value="$(printf '%s' "$value" | sed -e 's/[[:space:]]*$//')"
+            [ -n "$value" ] || continue
+
+            if grep -RqF -- "$value" dist; then
+              echo "OK   $name → đã nhúng vào bundle."
+            else
+              echo "::error::$name KHÔNG được nhúng vào bundle. Kiểm tra: (1) tên phải có tiền tố VITE_, (2) biến phải có mặt lúc build trên CI — env khai trong Cloudflare Pages dashboard KHÔNG áp dụng cho bundle build sẵn ở GitHub Actions."
+              missing=1
+            fi
+          done < "$ENV_FILE_PATH"
+
+          [ "$missing" -eq 0 ] || exit 1
+          echo "Tất cả biến trong $ENV_FILE_PATH đều đã có trong bundle."
 
       # Xoá env khỏi workspace ngay sau build (chạy cả khi build lỗi).
       - name: Remove env file
