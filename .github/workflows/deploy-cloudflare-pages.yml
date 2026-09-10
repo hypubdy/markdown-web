@@ -24,6 +24,32 @@ jobs:
       url: ${{ steps.deploy.outputs.deployment-url }}
 
     steps:
+      # Kiểm tra cấu hình trước, để không tốn thời gian npm ci + build rồi mới fail.
+      - name: Validate configuration
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+        run: |
+          missing=0
+          if [ -z "${CF_API_TOKEN}" ]; then
+            echo "::error::Thiếu secret CLOUDFLARE_API_TOKEN — thêm ở Settings → Secrets and variables → Actions → tab Secrets."
+            missing=1
+          fi
+          if [ -z "${CF_ACCOUNT_ID}" ]; then
+            echo "::error::Thiếu secret CLOUDFLARE_ACCOUNT_ID — thêm ở tab Secrets."
+            missing=1
+          fi
+          if [ -z "${CF_PAGES_PROJECT}" ]; then
+            echo "::error::Thiếu variable CLOUDFLARE_PAGES_PROJECT — phải nằm ở tab Variables (không phải tab Secrets) và trùng tên project Pages."
+            missing=1
+          fi
+          if [ "$missing" -ne 0 ]; then
+            echo "Dừng sớm: cấu hình chưa đủ. Nếu bạn dùng GitHub Environment, secrets phải nằm trong environment 'production' hoặc ở cấp repository."
+            exit 1
+          fi
+          echo "Cấu hình OK."
+
       - name: Checkout
         uses: actions/checkout@v7
 
@@ -67,7 +93,7 @@ jobs:
             echo "Đã tạo $ENV_FILE_PATH với các biến (chỉ in tên, không in giá trị):"
             grep -oE '^[A-Za-z_][A-Za-z0-9_]*' "$ENV_FILE_PATH" | sort -u || true
           else
-            echo "Không có secret nào được cấu hình — build với env mặc định."
+            echo "::warning::Không có secret env nào — app sẽ build với API_BASE rỗng (gọi /api cùng domain)."
           fi
 
       - name: Build application
