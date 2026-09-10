@@ -25,12 +25,14 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
+      # Node >= 22 là bắt buộc: Wrangler v4 (dùng bởi wrangler-action@v4) yêu cầu Node >= 22.
+      # Dùng 24 (Active LTS) — cũng là bản đã build thử thành công ở local.
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
@@ -78,9 +80,10 @@ jobs:
 
       - name: Deploy to Cloudflare Pages
         id: deploy
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy dist --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }} --branch=main
-          wranglerVersion: latest
+          # Ghim major để Wrangler không tự nhảy sang bản mới đòi Node cao hơn.
+          wranglerVersion: "4"
