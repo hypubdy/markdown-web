@@ -128,13 +128,15 @@ jobs:
 
       # ── Toàn bộ env nằm trong 1 secret duy nhất: ENV_FILE ──────────────────
       # Dán nguyên nội dung file .env (nhiều dòng) vào secret ENV_FILE.
-      # Secret lẻ (VITE_API_BASE, VITE_CLERK_PUBLISHABLE_KEY) là tuỳ chọn,
+      # Secret/variable lẻ (VITE_API_BASE, VITE_CLERK_PUBLISHABLE_KEY) là tuỳ chọn,
       # nếu có giá trị thì ghi sau → ghi đè giá trị cùng tên trong ENV_FILE.
+      # Chấp nhận cả 2 nơi: tab Secrets và tab Variables (secret được ưu tiên).
+      # Lưu ý: giá trị VITE_* nằm công khai trong bundle JS — không phải bí mật.
       - name: Write env file from secrets
         env:
           ENV_FILE: ${{ secrets.ENV_FILE }}
-          VITE_API_BASE: ${{ secrets.VITE_API_BASE }}
-          VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
+          VITE_API_BASE: ${{ secrets.VITE_API_BASE || vars.VITE_API_BASE }}
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY || vars.VITE_CLERK_PUBLISHABLE_KEY }}
         run: |
           set -euo pipefail
           : > "$ENV_FILE_PATH"
