@@ -10,6 +10,10 @@ export function PwaInstallButton() {
 
   async function handleInstall() {
     const result = await install();
+    if (result === "share") {
+      toast.info("Trong bảng chia sẻ, chọn Thêm vào màn hình chính");
+      return;
+    }
     if (result === "manual") {
       toast.info("Mở menu trình duyệt và chọn Cài đặt ứng dụng hoặc Thêm vào màn hình chính");
     }

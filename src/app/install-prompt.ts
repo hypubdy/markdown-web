@@ -5,6 +5,8 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 }
 
+export type InstallResult = "accepted" | "dismissed" | "manual" | "share";
+
 function isStandalone() {
   if (typeof window === "undefined") return false;
   return (
@@ -42,8 +44,23 @@ export function useInstallPrompt() {
     };
   }, []);
 
-  const install = useCallback(async (): Promise<"accepted" | "dismissed" | "manual"> => {
-    if (!deferredPrompt) return "manual";
+  const install = useCallback(async (): Promise<InstallResult> => {
+    if (!deferredPrompt) {
+      if (isIOS() && typeof navigator.share === "function") {
+        try {
+          await navigator.share({
+            title: document.title,
+            url: window.location.href,
+          });
+          return "share";
+        } catch (error) {
+          if (error instanceof DOMException && error.name === "AbortError") {
+            return "dismissed";
+          }
+        }
+      }
+      return "manual";
+    }
     await deferredPrompt.prompt();
     const choice = await deferredPrompt.userChoice;
     setDeferredPrompt(null);
