@@ -1,5 +1,11 @@
-const CACHE_NAME = "markdown-notes-shell-v1";
-const APP_SHELL = ["/", "/index.html", "/manifest.webmanifest", "/pwa-icon.svg"];
+const CACHE_NAME = "markdown-notes-shell-v3";
+const APP_SHELL = [
+  "/",
+  "/index.html",
+  "/manifest.webmanifest",
+  "/pwa-icon-192.png",
+  "/pwa-icon-512.png",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

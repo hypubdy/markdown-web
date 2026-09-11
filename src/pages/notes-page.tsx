@@ -3,8 +3,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AppShell } from "@/components/layout/app-shell";
-import { Button } from "@/components/ui/button";
-import { useInstallPrompt } from "@/app/install-prompt";
+import { subscribeToOpenedFiles } from "@/app/file-handler";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
@@ -14,7 +13,7 @@ import { useNotes, useNote, useSoftDeleteNote } from "@/features/notes/notes-hoo
 import { useTags } from "@/features/tags/tags-hooks";
 import { notesApi } from "@/features/notes/notes.api";
 import { isMarkdownFile, readMarkdownFile } from "@/features/notes/markdown-file";
-import { Download, FileUp, Plus, Search } from "lucide-react";
+import { FileUp, Plus, Search } from "lucide-react";
 import type { NoteListItem, SafeNote } from "@/types";
 
 export function NotesPage() {
@@ -31,6 +30,7 @@ export function NotesPage() {
   const [saving, setSaving] = useState(false);
   const [draggingFile, setDraggingFile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const openFileHandlerRef = useRef<(file: File) => void>(() => undefined);
   /** true khi đang tải note khác (chuyển note) → hiện Skeleton, tránh vỡ layout */
   const [switching, setSwitching] = useState(false);
 
@@ -49,7 +49,6 @@ export function NotesPage() {
   const { data: activeNote, isLoading: loadingNote } = useNote(selectedId ?? undefined);
   const softDelete = useSoftDeleteNote();
   const queryClient = useQueryClient();
-  const { canInstall, install } = useInstallPrompt();
 
   const tagOptions = useMemo(() => tags ?? [], [tags]);
   const allNotesCount = searchableNotes?.length ?? 0;
@@ -129,12 +128,13 @@ export function NotesPage() {
     }
   }
 
-  async function handleInstall() {
-    const result = await install();
-    if (result === "manual") {
-      toast.info("Mở menu trình duyệt và chọn Cài đặt ứng dụng hoặc Thêm vào màn hình chính");
-    }
-  }
+  openFileHandlerRef.current = (file) => {
+    void handleOpenFile(file);
+  };
+
+  useEffect(() => {
+    return subscribeToOpenedFiles((file) => openFileHandlerRef.current(file));
+  }, []);
 
   function handleFileInputChange(event: React.ChangeEvent<HTMLInputElement>) {
     void handleOpenFile(event.target.files?.[0]);
@@ -348,16 +348,6 @@ export function NotesPage() {
           )}
         </section>
       </div>
-      {canInstall && (
-        <Button
-          type="button"
-          className="fixed bottom-4 right-4 z-20 gap-2 shadow-lg"
-          onClick={() => void handleInstall()}
-        >
-          <Download className="h-4 w-4" />
-          Cài ứng dụng
-        </Button>
-      )}
     </AppShell>
   );
 }

@@ -9,12 +9,17 @@ import { router } from "@/app/router";
 import { AuthProvider } from "@/features/auth/auth-context";
 import { ThemeProvider } from "@/app/theme-context";
 import { clerkPublishableKey, isClerkEnabled } from "@/lib/auth-mode";
+import { initializeFileHandler } from "@/app/file-handler";
+import { PwaInstallButton } from "@/components/pwa-install-button";
 import "@/index.css";
+
+initializeFileHandler();
 
 const appTree = (
   <ThemeProvider>
     <AuthProvider>
       <RouterProvider router={router} />
+      <PwaInstallButton />
     </AuthProvider>
   </ThemeProvider>
 );
