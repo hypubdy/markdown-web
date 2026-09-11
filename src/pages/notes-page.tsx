@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/layout/app-shell";
 import { Input } from "@/components/ui/input";
@@ -9,22 +10,16 @@ import { SplitNoteEditor } from "@/features/notes/split-note-editor";
 import { useNotes, useNote, useSoftDeleteNote } from "@/features/notes/notes-hooks";
 import { useTags } from "@/features/tags/tags-hooks";
 import { notesApi } from "@/features/notes/notes.api";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 import { Plus, Search } from "lucide-react";
-import type { NoteListItem, NoteStatus, SafeNote } from "@/types";
+import type { NoteListItem, SafeNote } from "@/types";
 
 export function NotesPage() {
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<NoteStatus | "all">("all");
   const [tag, setTag] = useState<string | "all">("all");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { noteId } = useParams<{ noteId?: string }>();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const selectedId = noteId ?? null;
 
   /** Bản ghi đang được soạn (draft mới hoặc bản sao của note đã chọn) */
   const [editing, setEditing] = useState<SafeNote | null>(null);
@@ -39,17 +34,18 @@ export function NotesPage() {
 
   const filters = {
     q: search || undefined,
-    status: status === "all" ? undefined : status,
     tag: tag === "all" ? undefined : tag,
   };
 
   const { data: notes, isLoading } = useNotes(filters);
+  const { data: searchableNotes } = useNotes({ q: search || undefined });
   const { data: tags } = useTags();
   const { data: activeNote, isLoading: loadingNote } = useNote(selectedId ?? undefined);
   const softDelete = useSoftDeleteNote();
   const queryClient = useQueryClient();
 
   const tagOptions = useMemo(() => tags ?? [], [tags]);
+  const allNotesCount = searchableNotes?.length ?? 0;
 
   // Khi đã chọn note (không phải draft) & chưa có editing → nạp bản sao để chỉnh
   const liveNote = activeNote ?? null;
@@ -62,6 +58,15 @@ export function NotesPage() {
     setSwitching(false);
   }, [liveNote, editing]);
 
+  // Khi chuyển từ /notes/:id về / để tạo note, route mới có thể mount lại page.
+  // Dùng location state để không làm mất draft cục bộ trong lần chuyển này.
+  useEffect(() => {
+    if (!location.state?.createNote) return;
+    setSavedSnapshot(null);
+    setEditing(createEmptyNote());
+    navigate("/", { replace: true, state: null });
+  }, [location.state, navigate]);
+
   // Nội dung soạn hiển thị: ưu tiên editing (source mới nhất)
   function patchEditing(patch: Partial<SafeNote>) {
     setEditing((d) => (d ? { ...d, ...patch } : d));
@@ -71,28 +76,20 @@ export function NotesPage() {
     // Giữ editor hiển thị liên tục (không xoá editing) để tránh chớp giữa skeleton/editor;
     // chỉ cập nhật nội dung khi note mới load xong.
     setSwitching(true);
-    setSelectedId(note.id);
+    navigate(`/notes/${encodeURIComponent(note.id)}`);
     const full = await notesApi.byId(note.id);
     setEditing({ ...full });
+    setSavedSnapshot(serializeNote(full));
   }
 
   async function handleCreate() {
     // Tạo DRAFT cục bộ (chưa gọi API) — chỉ POST khi người dùng bấm Lưu.
     // Điều này tránh lỗi 400 "Tiêu đề không được để trống" khi đang soạn note trống.
-    setSelectedId(null);
     setSavedSnapshot(null);
-    setEditing({
-      id: "",
-      ownerId: "",
-      title: "",
-      content: "",
-      status: "draft",
-      deletedAt: null,
-      shareToken: null,
-      createdAt: "",
-      updatedAt: "",
-      tags: [],
-    });
+    setEditing(createEmptyNote());
+    if (location.pathname !== "/") {
+      navigate("/", { state: { createNote: true } });
+    }
   }
 
   async function handleSave() {
@@ -112,7 +109,8 @@ export function NotesPage() {
       queryClient.invalidateQueries({ queryKey: ["notes", "detail", editing.id] });
       queryClient.invalidateQueries({ queryKey: ["tags"] });
       setEditing({ ...saved });
-      setSelectedId(saved.id);
+      setSavedSnapshot(serializeNote(saved));
+      navigate(`/notes/${encodeURIComponent(saved.id)}`, { replace: true });
     } else {
       // Draft mới → tạo
       const saved = await notesApi.create(body);
@@ -120,7 +118,7 @@ export function NotesPage() {
       queryClient.invalidateQueries({ queryKey: ["tags"] });
       setEditing({ ...saved });
       setSavedSnapshot(serializeNote(saved));
-      setSelectedId(saved.id);
+      navigate(`/notes/${encodeURIComponent(saved.id)}`, { replace: true });
     }
     } finally {
       setSaving(false);
@@ -131,7 +129,7 @@ export function NotesPage() {
     if (!editing) return;
     await softDelete.mutateAsync(editing.id);
     setEditing(null);
-    setSelectedId(null);
+    navigate("/", { replace: true });
   }
 
   /** Sau publish/share đổi → refetch detail + list để state editor cập nhật */
@@ -141,6 +139,7 @@ export function NotesPage() {
     queryClient.invalidateQueries({ queryKey: ["notes", "detail", selectedId] });
     const full = await notesApi.byId(selectedId);
     setEditing({ ...full });
+    setSavedSnapshot(serializeNote(full));
   }
 
   const editorNote = editing;
@@ -176,37 +175,33 @@ export function NotesPage() {
                 <Plus className="h-4 w-4" />
               </button>
             </div>
-            {/* Bộ lọc trạng thái (gọn, thay cho tabs riêng) */}
-            <div className="flex items-center gap-1 rounded-lg bg-muted p-0.5 text-xs">
-              {filterTabs.map((t) => (
-                <button
-                  key={t.value}
-                  onClick={() => setStatus(t.value === "list" ? "all" : t.value)}
-                  className={cn(
-                    "flex-1 rounded-md px-2 py-1 transition-colors",
-                    (status === "all" ? "list" : status) === t.value
-                      ? "bg-background font-medium shadow-sm"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {t.label}
-                </button>
+            <div
+              role="group"
+              aria-label="Lọc theo nhãn"
+              onWheel={(event) => {
+                const element = event.currentTarget;
+                if (element.scrollWidth <= element.clientWidth || event.deltaY === 0) return;
+                event.preventDefault();
+                element.scrollLeft += event.deltaY;
+              }}
+              className="flex items-center gap-1 overflow-x-auto rounded-full border bg-muted/25 p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              <TagFilterButton
+                active={tag === "all"}
+                count={allNotesCount}
+                label="Tất cả"
+                onClick={() => setTag("all")}
+              />
+              {tagOptions.map((item) => (
+                <TagFilterButton
+                  key={item.name}
+                  active={tag === item.name}
+                  count={item.count}
+                  label={item.name}
+                  onClick={() => setTag(item.name)}
+                />
               ))}
             </div>
-            {/* Chọn tag */}
-            <Select value={tag} onValueChange={(v) => setTag(v as string | "all")}>
-              <SelectTrigger className="h-8 w-full text-xs">
-                <SelectValue placeholder="Chọn tag" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả tag</SelectItem>
-                {tagOptions.map((t) => (
-                  <SelectItem key={t.name} value={t.name}>
-                    {t.name} ({t.count})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
           <Separator />
           <div className="flex-1 space-y-0.5 overflow-y-auto overscroll-contain p-1.5 [scrollbar-gutter:stable]">
@@ -254,7 +249,7 @@ export function NotesPage() {
                   d ? { ...d, tags: d.tags.filter((x) => x !== t) } : d,
                 )
               }
-              onChangeStatus={(s) => patchEditing({ status: s })}
+              availableTags={tagOptions.map((item) => item.name)}
               onSave={handleSave}
                saving={saving}
               onDelete={handleDelete}
@@ -271,11 +266,56 @@ export function NotesPage() {
   );
 }
 
-const filterTabs = [
-  { value: "list" as const, label: "Tất cả" },
-  { value: "draft" as const, label: "Bản nháp" },
-  { value: "published" as const, label: "Đã xuất bản" },
-];
+function TagFilterButton({
+  active,
+  count,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  count: number;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={`inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors ${
+        active
+          ? "bg-secondary text-secondary-foreground shadow-sm"
+          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+      }`}
+    >
+      <span className="max-w-28 truncate">{label}</span>
+      <span
+        className={`min-w-5 rounded-full px-1.5 py-0.5 text-center text-[10px] font-semibold leading-none ${
+          active
+            ? "bg-violet-500 text-white"
+            : "bg-muted-foreground/15 text-muted-foreground"
+        }`}
+      >
+        {count}
+      </span>
+    </button>
+  );
+}
+
+function createEmptyNote(): SafeNote {
+  return {
+    id: "",
+    ownerId: "",
+    title: "",
+    content: "",
+    status: "draft",
+    deletedAt: null,
+    shareToken: null,
+    createdAt: "",
+    updatedAt: "",
+    tags: [],
+  };
+}
 
 /** Skeleton mô phỏng bố cục editor (tiêu đề + metadata + body) — hiện khi đang load note */
 function EditorSkeleton() {

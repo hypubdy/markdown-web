@@ -240,10 +240,23 @@ export const handlers = [
     if (!note || note.ownerId !== auth.id || note.deletedAt) {
       return fail(404, "Không tìm thấy ghi chú");
     }
-    const body = (await request.json()) as Partial<Note>;
+    const body = (await request.json()) as Partial<Note> & { tagNames?: string[] };
     if (body.title !== undefined) note.title = body.title;
     if (body.content !== undefined) note.content = body.content;
     if (body.status !== undefined) note.status = body.status;
+    if (body.tagNames !== undefined) {
+      const db = getDb();
+      const names = Array.from(new Set(body.tagNames.map((name) => name.trim()).filter(Boolean)));
+      db.noteTags = db.noteTags.filter((link) => link.noteId !== note.id);
+      for (const name of names) {
+        let tag = db.tags.find((item) => item.ownerId === auth.id && item.name === name);
+        if (!tag) {
+          tag = { id: randomUuidTagId(), ownerId: auth.id, name };
+          db.tags.push(tag);
+        }
+        db.noteTags.push({ noteId: note.id, tagId: tag.id });
+      }
+    }
     note.updatedAt = nowIso();
     return ok(toSafeNote(note), "Đã cập nhật ghi chú");
   }),

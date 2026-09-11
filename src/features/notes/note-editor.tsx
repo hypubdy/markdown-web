@@ -11,13 +11,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { MarkdownPreview } from "@/components/markdown-preview";
 import { useCreateNote, useUpdateNote } from "@/features/notes/notes-hooks";
 import { Badge } from "@/components/ui/badge";
@@ -136,23 +129,7 @@ export function NoteEditor({ note, open, onOpenChange, onSaved }: NoteEditorProp
             </TabsContent>
           </Tabs>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Trạng thái</Label>
-              <Select
-                value={status}
-                onValueChange={(v) => setStatus(v as NoteStatus)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Trạng thái" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="draft">Bản nháp</SelectItem>
-                  <SelectItem value="published">Xuất bản</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
+          <div className="space-y-2">
               <Label>Tags</Label>
               <Input
                 value={tagInput}
@@ -166,7 +143,6 @@ export function NoteEditor({ note, open, onOpenChange, onSaved }: NoteEditorProp
                 onBlur={() => addTag(tagInput)}
                 placeholder="Gõ tag rồi Enter (vd: markdown, demo)"
               />
-            </div>
           </div>
 
           {tags.length > 0 && (

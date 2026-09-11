@@ -41,6 +41,10 @@ export const router = createBrowserRouter([
     element: withAuth(<NotesPage />),
   },
   {
+    path: "/notes/:noteId",
+    element: withAuth(<NotesPage />),
+  },
+  {
     path: "/trash",
     element: withAuth(<TrashPage />),
   },
@@ -70,4 +74,3 @@ export const router = createBrowserRouter([
     element: <Navigate to="/404" replace />,
   },
 ]);
-

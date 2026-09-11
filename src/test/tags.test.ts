@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { seedDb } from "@/test/mocks/db";
+import { getDb, seedDb } from "@/test/mocks/db";
 import { makeOwnerSession } from "@/test/support/fixtures";
 import type { TagCount } from "@/types";
 
@@ -77,6 +77,35 @@ const tagsCases: TagsCase[] = [
     expect: (result) => {
       const tags = result as TagCount[];
       expect(tags.some((t) => t.name === "can-xoa")).toBe(false);
+    },
+  },
+  {
+    name: "gỡ tag khỏi một note → chỉ xoá liên kết, không xoá tag dùng ở note khác",
+    before: async () => {
+      const { notesApi } = await import("@/features/notes/notes.api");
+      await notesApi.create({ title: "Note A", content: "", tagNames: ["giu-lai"] });
+      await notesApi.create({ title: "Note B", content: "", tagNames: ["giu-lai"] });
+    },
+    act: async () => {
+      const { notesApi } = await import("@/features/notes/notes.api");
+      const { tagsApi } = await import("@/features/tags/tags.api");
+      const notes = await notesApi.list();
+      const noteA = notes.find((note) => note.title === "Note A");
+      if (!noteA) throw new Error("Không tìm thấy Note A trong test");
+
+      const updated = await notesApi.update(noteA.id, { tagNames: [] });
+      const tags = await tagsApi.list();
+      return { updated, tags };
+    },
+    expect: (result) => {
+      const { updated, tags } = result as {
+        updated: { tags: string[] };
+        tags: TagCount[];
+      };
+      expect(updated.tags).toEqual([]);
+      expect(tags).toContainEqual({ name: "giu-lai", count: 1 });
+      expect(getDb().noteTags).toHaveLength(1);
+      expect(getDb().tags.some((tag) => tag.name === "giu-lai")).toBe(true);
     },
   },
 ];

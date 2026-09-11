@@ -79,6 +79,26 @@ describe("UI luồng notes (bảng case object)", () => {
         expect(screen.queryByText(c.expectAbsent)).toBeNull();
     });
   }
+
+  it("note detail có thể chọn nhãn có sẵn rồi lưu", async () => {
+    makeOwnerSession();
+    const { notesApi } = await import("@/features/notes/notes.api");
+    await notesApi.create({ title: "Note có nhãn", content: "", tagNames: ["nhan-co-san"] });
+    const target = await notesApi.create({ title: "Note cần gắn nhãn", content: "" });
+    const user = userEvent.setup();
+
+    render(renderTestApp(`/notes/${target.id}`));
+
+    const tagSelect = await screen.findByRole("combobox", { name: "Chọn nhãn có sẵn" });
+    await user.selectOptions(tagSelect, "nhan-co-san");
+
+    expect(screen.getByLabelText("Xoá tag nhan-co-san")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Lưu thay đổi" }));
+    await waitFor(async () => {
+      const saved = await notesApi.byId(target.id);
+      expect(saved.tags).toEqual(["nhan-co-san"]);
+    });
+  });
 });
 
 // ── 2) API client + MSW (dữ liệu thật trong DB mock) ───────────────

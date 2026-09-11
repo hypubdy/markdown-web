@@ -12,7 +12,6 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
-  useUpdateStatus,
   useEnableShare,
   useDisableShare,
 } from "@/features/notes/notes-actions-hooks";
@@ -21,10 +20,9 @@ import {
   GlobeLock,
   Link as LinkIcon,
   Loader2,
-  Send,
   Copy,
 } from "lucide-react";
-import type { NoteStatus, SafeNote } from "@/types";
+import type { SafeNote } from "@/types";
 
 export interface NoteActionsBarProps {
   note: SafeNote;
@@ -33,31 +31,23 @@ export interface NoteActionsBarProps {
 }
 
 /**
- * Thanh thao tác cho một note: Publish/Unpublish + Chia sẻ công khai (bật/thu hồi + copy link).
- * Gắn vào header editor; backend đã hỗ trợ PATCH status + POST/DELETE share.
+ * Thanh thao tác chia sẻ công khai (bật/thu hồi + copy link) cho một note.
+ * Trạng thái nháp/xuất bản vẫn được backend hỗ trợ nhưng không hiển thị trên UI.
  */
 export function NoteActionsBar({ note, onChanged, className }: NoteActionsBarProps) {
-  const updateStatus = useUpdateStatus(note.id);
   const enableShare = useEnableShare();
   const disableShare = useDisableShare(note.id);
   const [shareOpen, setShareOpen] = useState(false);
 
-  const isPublished = note.status === "published";
   const isShared = !!note.shareToken;
 
   const publicUrl = note.shareToken
     ? `${window.location.origin}/public/notes/${note.shareToken}`
     : "";
 
-  // Note chưa lưu (draft) → chưa có id → không thể publish/chia sẻ
+  // Note chưa lưu → chưa có id → chưa thể chia sẻ
   if (!note.id) {
-    return <span className="text-xs text-muted-foreground">Lưu để xuất bản / chia sẻ</span>;
-  }
-
-  async function toggleStatus() {
-    const next: NoteStatus = isPublished ? "draft" : "published";
-    await updateStatus.mutateAsync(next);
-    onChanged?.();
+    return <span className="text-xs text-muted-foreground">Lưu để chia sẻ</span>;
   }
 
   async function toggleShare() {
@@ -81,23 +71,6 @@ export function NoteActionsBar({ note, onChanged, className }: NoteActionsBarPro
   return (
     <>
       <div className={cn("flex items-center gap-1.5", className)}>
-        {/* Publish / Unpublish */}
-        <Button
-          size="sm"
-          variant={isPublished ? "secondary" : "default"}
-          onClick={toggleStatus}
-          disabled={updateStatus.isPending}
-          className="gap-1.5"
-          title={isPublished ? "Chuyển về bản nháp" : "Xuất bản ghi chú"}
-        >
-          {updateStatus.isPending ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Send className="h-3.5 w-3.5" />
-          )}
-          {isPublished ? "Đã xuất bản" : "Xuất bản"}
-        </Button>
-
         {/* Share */}
         <Button
           size="sm"

@@ -15,7 +15,7 @@ import {
   Loader2,
   Trash2,
 } from "lucide-react";
-import type { NoteStatus, SafeNote } from "@/types";
+import type { SafeNote } from "@/types";
 
 export type EditorMode = "edit" | "split" | "preview";
 
@@ -25,10 +25,10 @@ export interface SplitNoteEditorProps {
   onChangeContent: (value: string) => void;
   onAddTag: (name: string) => void;
   onRemoveTag: (name: string) => void;
-  onChangeStatus?: (status: NoteStatus) => void;
+  availableTags?: string[];
   onSave?: () => void;
   onDelete?: () => void;
-  /** gọi sau khi trạng thái/chia sẻ thay đổi (để parent cập nhật note) */
+  /** gọi sau khi chia sẻ thay đổi (để parent cập nhật note) */
   onChanged?: () => void;
   saving?: boolean;
   className?: string;
@@ -41,7 +41,7 @@ export function SplitNoteEditor({
   onChangeContent,
   onAddTag,
   onRemoveTag,
-  onChangeStatus,
+  availableTags = [],
   onSave,
   onDelete,
   onChanged,
@@ -120,13 +120,8 @@ export function SplitNoteEditor({
         </div>
       </div>
 
-      {/* Dòng metadata: trạng thái + tags */}
+      {/* Dòng metadata: tags */}
       <div className="flex items-center gap-2 border-b px-5 py-2 text-xs">
-        <SelectStatus
-          value={note.status}
-          onChange={(v) => onChangeStatus?.(v as NoteStatus)}
-        />
-        <span className="text-muted-foreground">·</span>
         <span className="text-muted-foreground">{note.tags.length} tag</span>
         <div className="ml-2 flex flex-1 flex-wrap items-center gap-1.5">
           {note.tags.map((t) => (
@@ -144,6 +139,23 @@ export function SplitNoteEditor({
           ))}
         </div>
         <div className="flex items-center gap-1">
+          <select
+            value=""
+            onChange={(event) => onAddTag(event.target.value)}
+            aria-label="Chọn nhãn có sẵn"
+            className="h-7 w-28 rounded-md border border-input bg-transparent px-2 text-xs text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          >
+            <option value="" disabled>
+              Chọn nhãn
+            </option>
+            {availableTags
+              .filter((tag) => !note.tags.includes(tag))
+              .map((tag) => (
+                <option key={tag} value={tag}>
+                  {tag}
+                </option>
+              ))}
+          </select>
           <Input
             value={tagInput}
             onChange={(e) => setTagInput(e.target.value)}
@@ -161,7 +173,7 @@ export function SplitNoteEditor({
             <Plus className="h-3.5 w-3.5" />
           </Button>
         </div>
-        {/* Thao tác publish / chia sẻ + xoá */}
+        {/* Thao tác chia sẻ + xoá */}
         <NoteActionsBar note={note} onChanged={onChanged} className="ml-auto" />
         {note.id && onDelete && (
           <Button
@@ -220,25 +232,5 @@ function ModeButton({
     >
       {children}
     </Button>
-  );
-}
-
-function SelectStatus({
-  value,
-  onChange,
-}: {
-  value: NoteStatus;
-  onChange: (value: NoteStatus) => void;
-}) {
-  // Dùng select nguyên bản để gọn; trạng thái draft/published
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value as NoteStatus)}
-      className="h-7 rounded-md border border-input bg-transparent px-2 text-xs text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-    >
-      <option value="draft">Bản nháp</option>
-      <option value="published">Đã xuất bản</option>
-    </select>
   );
 }

@@ -140,6 +140,11 @@ export function toSafeNote(note: MockNote, tags: string[] = noteTags(note.id)): 
 
 export function listTagsWithCount(ownerId: string): TagCount[] {
   const map = new Map<string, number>();
+  // A tag is independent from its note links. Detaching the last link must
+  // not delete the tag; DELETE /tags/:name is the explicit delete operation.
+  for (const tag of db.tags) {
+    if (tag.ownerId === ownerId) map.set(tag.name, 0);
+  }
   for (const nt of db.noteTags) {
     const tag = db.tags.find((t) => t.id === nt.tagId);
     if (!tag || tag.ownerId !== ownerId) continue;

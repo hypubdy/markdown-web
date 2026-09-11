@@ -43,6 +43,14 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/notes/:noteId"
+        element={
+          <RequireAuth>
+            <NotesPage />
+          </RequireAuth>
+        }
+      />
+      <Route
         path="/trash"
         element={
           <RequireAuth>
