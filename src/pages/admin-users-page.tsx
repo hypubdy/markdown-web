@@ -82,7 +82,7 @@ export function AdminUsersPage() {
           {(users ?? []).map((u) => (
             <div
               key={u.id}
-              className="flex items-center justify-between rounded-xl border bg-card p-3"
+              className="flex flex-col gap-3 rounded-xl border bg-card p-3 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="flex min-w-0 items-center gap-3">
                 <Avatar>
@@ -100,7 +100,7 @@ export function AdminUsersPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex shrink-0 items-center gap-2">
+              <div className="flex shrink-0 justify-end gap-2">
                 <Select
                   value={u.role}
                   onValueChange={(v) =>

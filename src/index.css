@@ -81,3 +81,28 @@
 .prose :where(code):not(:where([class~="not-prose"] *))::after {
   content: none;
 }
+
+/* Reserve space for the fixed mobile navigation, including iOS safe areas. */
+.pwa-install-button {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 50;
+}
+
+@media (max-width: 767px) {
+  .mobile-content-safe {
+    padding-bottom: calc(3.5rem + env(safe-area-inset-bottom));
+  }
+
+  .mobile-bottom-nav {
+    min-height: calc(3.5rem + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .pwa-install-button {
+    bottom: calc(3.5rem + env(safe-area-inset-bottom) + 0.75rem);
+    right: 0.75rem;
+    left: auto;
+  }
+}

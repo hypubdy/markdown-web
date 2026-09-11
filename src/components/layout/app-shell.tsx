@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
-import { Sidebar } from "@/components/layout/sidebar";
+import { MobileSidebar, Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/top-bar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
@@ -45,9 +45,11 @@ export function AppShell({
 
   return (
     <div className="flex h-full w-full overflow-hidden">
-      <div className="shrink-0 transition-all">
+      <div className="hidden shrink-0 transition-all md:block">
         <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
       </div>
+
+      <MobileSidebar />
 
       <div className="flex min-w-0 flex-1 flex-col">
         {!hideTopBar && <TopBar title={title} subtitle={subtitle} />}
@@ -73,7 +75,9 @@ export function AppShell({
         <main
           className={cn(
             "min-h-0 flex-1",
-            fullBleed ? "overflow-hidden" : "overflow-auto p-4",
+            fullBleed
+              ? "overflow-hidden mobile-content-safe"
+              : "overflow-auto p-4 max-md:p-3 mobile-content-safe",
           )}
         >
           {children}

@@ -77,7 +77,7 @@ export function TagsPage() {
   return (
     <AppShell title="Tags" subtitle="Nhãn gắn cho ghi chú">
       <div className="mx-auto max-w-2xl space-y-4">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-lg font-semibold">Quản lý nhãn</h1>
             <p className="text-sm text-muted-foreground">

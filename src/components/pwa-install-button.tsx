@@ -18,11 +18,13 @@ export function PwaInstallButton() {
   return (
     <Button
       type="button"
-      className="fixed bottom-4 right-4 z-50 gap-2 shadow-lg"
+      size="icon"
+      className="pwa-install-button h-11 w-11 rounded-full shadow-lg"
       onClick={() => void handleInstall()}
+      aria-label="Cài ứng dụng"
+      title="Cài ứng dụng"
     >
-      <Download className="h-4 w-4" />
-      Cài ứng dụng
+      <Download className="h-5 w-5" />
     </Button>
   );
 }

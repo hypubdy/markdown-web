@@ -14,6 +14,7 @@ import {
   Plus,
   Loader2,
   Trash2,
+  ArrowLeft,
 } from "lucide-react";
 import type { SafeNote } from "@/types";
 
@@ -30,6 +31,8 @@ export interface SplitNoteEditorProps {
   onDelete?: () => void;
   /** gọi sau khi chia sẻ thay đổi (để parent cập nhật note) */
   onChanged?: () => void;
+  /** quay lại danh sách note trên màn hình mobile */
+  onBack?: () => void;
   saving?: boolean;
   className?: string;
 }
@@ -45,6 +48,7 @@ export function SplitNoteEditor({
   onSave,
   onDelete,
   onChanged,
+  onBack,
   saving,
   className,
 }: SplitNoteEditorProps) {
@@ -73,14 +77,28 @@ export function SplitNoteEditor({
   return (
     <div className={cn("flex h-full min-h-0 flex-col", className)}>
       {/* Header: tiêu đề + các nút chế độ xem + lưu */}
-      <div className="flex items-center justify-between gap-3 border-b px-5 py-2.5">
-        <input
-          value={note.title}
-          onChange={(e) => onChangeTitle(e.target.value)}
-          placeholder="Tiêu đề ghi chú"
-          className="w-full bg-transparent text-2xl font-semibold leading-tight outline-none placeholder:text-muted-foreground"
-        />
-        <div className="flex shrink-0 items-center gap-1">
+      <div className="flex flex-col gap-2 border-b px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+        <div className="flex min-w-0 items-center gap-1.5">
+          {onBack && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onBack}
+              className="h-8 w-8 shrink-0 md:hidden"
+              title="Quay lại danh sách"
+              aria-label="Quay lại danh sách"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          )}
+          <input
+            value={note.title}
+            onChange={(e) => onChangeTitle(e.target.value)}
+            placeholder="Tiêu đề ghi chú"
+            className="min-w-0 w-full bg-transparent text-xl font-semibold leading-tight outline-none placeholder:text-muted-foreground sm:text-2xl"
+          />
+        </div>
+        <div className="flex shrink-0 items-center justify-between gap-1 sm:justify-end">
           <ModeButton
             active={mode === "edit"}
             onClick={() => setMode("edit")}
@@ -111,9 +129,11 @@ export function SplitNoteEditor({
                 disabled={saving}
                 className="gap-1.5"
                 title="Ctrl+S để lưu"
+                aria-label="Lưu thay đổi"
               >
                 {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                {saving ? "Đang lưu…" : "Lưu thay đổi"}
+                <span aria-hidden="true" className="sm:hidden">{saving ? "Lưu…" : "Lưu"}</span>
+                <span aria-hidden="true" className="hidden sm:inline">{saving ? "Đang lưu…" : "Lưu thay đổi"}</span>
               </Button>
             </>
           )}
@@ -121,9 +141,9 @@ export function SplitNoteEditor({
       </div>
 
       {/* Dòng metadata: tags */}
-      <div className="flex items-center gap-2 border-b px-5 py-2 text-xs">
+      <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2 text-xs sm:px-5">
         <span className="text-muted-foreground">{note.tags.length} tag</span>
-        <div className="ml-2 flex flex-1 flex-wrap items-center gap-1.5">
+        <div className="order-3 flex min-w-0 basis-full flex-wrap items-center gap-1.5 sm:order-none sm:ml-2 sm:flex-1 sm:basis-auto">
           {note.tags.map((t) => (
             <Badge key={t} variant="secondary" className="gap-1 px-1.5 py-0 text-[11px]">
               {t}
@@ -138,12 +158,12 @@ export function SplitNoteEditor({
             </Badge>
           ))}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="order-4 flex min-w-0 flex-1 items-center gap-1 sm:order-none sm:flex-none">
           <select
             value=""
             onChange={(event) => onAddTag(event.target.value)}
             aria-label="Chọn nhãn có sẵn"
-            className="h-7 w-28 rounded-md border border-input bg-transparent px-2 text-xs text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            className="h-7 min-w-0 flex-1 rounded-md border border-input bg-transparent px-2 text-xs text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring sm:w-28 sm:flex-none"
           >
             <option value="" disabled>
               Chọn nhãn
@@ -167,19 +187,19 @@ export function SplitNoteEditor({
             }}
             onBlur={commitTag}
             placeholder="Thêm tag"
-            className="h-7 w-24 text-xs"
+            className="h-7 min-w-0 flex-1 text-xs sm:w-24 sm:flex-none"
           />
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={commitTag}>
             <Plus className="h-3.5 w-3.5" />
           </Button>
         </div>
         {/* Thao tác chia sẻ + xoá */}
-        <NoteActionsBar note={note} onChanged={onChanged} className="ml-auto" />
+        <NoteActionsBar note={note} onChanged={onChanged} className="order-2 ml-auto sm:order-none" />
         {note.id && onDelete && (
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+            className="order-2 h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive sm:order-none"
             onClick={onDelete}
             title="Xoá ghi chú"
             aria-label="Xoá ghi chú"
@@ -190,9 +210,14 @@ export function SplitNoteEditor({
       </div>
 
       {/* Thân chính: tuỳ theo chế độ */}
-      <div className="flex min-h-0 flex-1 overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
         {mode !== "preview" && (
-          <div className={cn("min-w-0 flex-1", mode === "split" && "border-r")}>
+          <div
+            className={cn(
+              "min-h-0 min-w-0 flex-1",
+              mode === "split" && "border-b md:border-b-0 md:border-r",
+            )}
+          >
             <MarkdownEditor
               value={note.content}
               onChange={onChangeContent}
@@ -201,7 +226,7 @@ export function SplitNoteEditor({
           </div>
         )}
         {mode !== "edit" && (
-          <div className="min-w-0 flex-1 overflow-y-auto overscroll-contain bg-muted/20 p-5 [scrollbar-gutter:stable]">
+          <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain bg-muted/20 p-3 [scrollbar-gutter:stable] sm:p-5">
             <MarkdownPreview content={note.content} />
           </div>
         )}

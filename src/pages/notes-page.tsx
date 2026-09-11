@@ -14,6 +14,7 @@ import { useTags } from "@/features/tags/tags-hooks";
 import { notesApi } from "@/features/notes/notes.api";
 import { isMarkdownFile, readMarkdownFile } from "@/features/notes/markdown-file";
 import { FileUp, Plus, Search } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { NoteListItem, SafeNote } from "@/types";
 
 export function NotesPage() {
@@ -181,6 +182,15 @@ export function NotesPage() {
     navigate("/", { replace: true });
   }
 
+  function handleBackToNotes() {
+    if (isDirty && !window.confirm("Thay đổi chưa lưu sẽ bị mất. Bạn vẫn muốn quay lại?")) {
+      return;
+    }
+    setEditing(null);
+    setSavedSnapshot(null);
+    navigate("/", { replace: true });
+  }
+
   /** Sau publish/share đổi → refetch detail + list để state editor cập nhật */
   async function refreshCurrent() {
     if (!selectedId) return;
@@ -202,7 +212,12 @@ export function NotesPage() {
     >
       <div className="flex h-full min-h-0 overflow-hidden">
         {/* Cột trái: danh sách note */}
-        <aside className="flex w-72 shrink-0 flex-col border-r bg-card">
+        <aside
+          className={cn(
+            "w-72 shrink-0 flex-col border-r bg-card",
+            editorNote ? "hidden md:flex" : "flex",
+          )}
+        >
           {/* Header: tìm kiếm + tạo */}
           <div className="space-y-2 p-2.5">
             <div className="flex items-center gap-1.5">
@@ -297,7 +312,10 @@ export function NotesPage() {
 
         {/* Cột phải: editor chia đôi */}
         <section
-          className="relative flex min-w-0 flex-1 flex-col"
+          className={cn(
+            "relative min-w-0 flex-1 flex-col",
+            editorNote ? "flex" : "hidden md:flex",
+          )}
           onDragOver={(event) => {
             if (Array.from(event.dataTransfer.types).includes("Files")) {
               event.preventDefault();
@@ -336,6 +354,7 @@ export function NotesPage() {
                 )
               }
               availableTags={tagOptions.map((item) => item.name)}
+              onBack={handleBackToNotes}
               onSave={handleSave}
                saving={saving}
               onDelete={handleDelete}

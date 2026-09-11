@@ -50,9 +50,9 @@ function TrashItem({
   onDelete: () => void;
 }) {
   return (
-    <div className="flex items-center justify-between rounded-xl border bg-card p-4">
+    <div className="flex flex-col gap-3 rounded-xl border bg-card p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
       <div className="min-w-0">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <FileText className="h-4 w-4 text-muted-foreground" />
           <span className="truncate text-sm font-medium">{note.title}</span>
           {note.tags.slice(0, 3).map((t) => (
@@ -65,11 +65,11 @@ function TrashItem({
           Xoá lúc {formatDate(note.updatedAt)}
         </p>
       </div>
-      <div className="flex shrink-0 gap-2">
-        <Button size="sm" variant="outline" onClick={onRestore}>
+      <div className="flex shrink-0 justify-end gap-2">
+        <Button size="sm" variant="outline" onClick={onRestore} className="flex-1 sm:flex-none">
           <RotateCcw /> Khôi phục
         </Button>
-        <Button size="sm" variant="destructive" onClick={onDelete}>
+        <Button size="sm" variant="destructive" onClick={onDelete} className="flex-1 sm:flex-none">
           <Trash2 /> Xoá hẳn
         </Button>
       </div>

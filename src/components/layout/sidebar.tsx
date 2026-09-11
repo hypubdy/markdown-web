@@ -210,3 +210,74 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
     </aside>
   );
 }
+
+/** Điều hướng gọn ở cạnh dưới màn hình cho thiết bị cảm ứng nhỏ. */
+export function MobileSidebar() {
+  const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const items = NAV_ITEMS.filter(
+    (item) => !item.adminOnly || user?.role === "admin",
+  );
+
+  return (
+    <nav className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-40 hidden border-t bg-sidebar/95 px-1 backdrop-blur supports-[backdrop-filter]:bg-sidebar/80 max-md:flex">
+      {items.map((item) => (
+        <NavLink
+          key={item.to}
+          to={item.to}
+          end={item.end}
+          className={({ isActive }) =>
+            cn(
+              "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-md text-[10px] font-medium",
+              isActive
+                ? "text-primary"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+            )
+          }
+        >
+          <item.icon className="h-[18px] w-[18px]" />
+          <span className="max-w-full truncate px-1">{item.label}</span>
+        </NavLink>
+      ))}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            title="Tài khoản"
+            aria-label="Tài khoản"
+            className="flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-md text-[10px] text-muted-foreground hover:bg-accent"
+          >
+            <Avatar className="h-[18px] w-[18px]">
+              <AvatarFallback className="text-[9px]">
+                {user?.name?.slice(0, 1).toUpperCase() || "?"}
+              </AvatarFallback>
+            </Avatar>
+            <span>Tài khoản</span>
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent side="top" align="end" className="w-56">
+          <DropdownMenuLabel>
+            {user?.name ?? "Người dùng"}
+            <span className="block text-xs font-normal text-muted-foreground">
+              {user?.email}
+            </span>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={toggleTheme}>
+            {theme === "dark" ? <Sun /> : <Moon />}
+            {theme === "dark" ? "Chế độ sáng" : "Chế độ tối"}
+          </DropdownMenuItem>
+          {user?.role === "admin" && (
+            <DropdownMenuItem asChild>
+              <NavLink to="/admin/users">
+                <Shield /> Quản lý người dùng
+              </NavLink>
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem onClick={logout} className="text-destructive">
+            <LogOut /> Đăng xuất
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </nav>
+  );
+}
