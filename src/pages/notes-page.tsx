@@ -129,6 +129,13 @@ export function NotesPage() {
     }
   }
 
+  async function handleInstall() {
+    const result = await install();
+    if (result === "manual") {
+      toast.info("Mở menu trình duyệt và chọn Cài đặt ứng dụng hoặc Thêm vào màn hình chính");
+    }
+  }
+
   function handleFileInputChange(event: React.ChangeEvent<HTMLInputElement>) {
     void handleOpenFile(event.target.files?.[0]);
     event.target.value = "";
@@ -345,7 +352,7 @@ export function NotesPage() {
         <Button
           type="button"
           className="fixed bottom-4 right-4 z-20 gap-2 shadow-lg"
-          onClick={() => void install()}
+          onClick={() => void handleInstall()}
         >
           <Download className="h-4 w-4" />
           Cài ứng dụng

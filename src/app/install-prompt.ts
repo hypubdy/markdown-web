@@ -36,13 +36,15 @@ export function useInstallPrompt() {
     };
   }, []);
 
-  const install = useCallback(async () => {
-    if (!deferredPrompt) return false;
+  const install = useCallback(async (): Promise<"accepted" | "dismissed" | "manual"> => {
+    if (!deferredPrompt) return "manual";
     await deferredPrompt.prompt();
     const choice = await deferredPrompt.userChoice;
     setDeferredPrompt(null);
-    return choice.outcome === "accepted";
+    return choice.outcome;
   }, [deferredPrompt]);
 
-  return { canInstall: !installed && deferredPrompt !== null, install };
+  // Hiện nút cả khi trình duyệt chưa phát beforeinstallprompt để người dùng
+  // vẫn có hướng dẫn cài thủ công từ menu trình duyệt.
+  return { canInstall: !installed, install };
 }
