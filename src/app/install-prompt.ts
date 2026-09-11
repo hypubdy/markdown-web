@@ -5,7 +5,7 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 }
 
-export type InstallResult = "accepted" | "dismissed" | "manual" | "share";
+export type InstallResult = "accepted" | "dismissed" | "manual";
 
 function isStandalone() {
   if (typeof window === "undefined") return false;
@@ -13,12 +13,6 @@ function isStandalone() {
     window.matchMedia?.("(display-mode: standalone)").matches === true ||
     (navigator as Navigator & { standalone?: boolean }).standalone === true
   );
-}
-
-function isIOS() {
-  if (typeof navigator === "undefined") return false;
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 }
 
 export function useInstallPrompt() {
@@ -45,22 +39,7 @@ export function useInstallPrompt() {
   }, []);
 
   const install = useCallback(async (): Promise<InstallResult> => {
-    if (!deferredPrompt) {
-      if (isIOS() && typeof navigator.share === "function") {
-        try {
-          await navigator.share({
-            title: document.title,
-            url: window.location.href,
-          });
-          return "share";
-        } catch (error) {
-          if (error instanceof DOMException && error.name === "AbortError") {
-            return "dismissed";
-          }
-        }
-      }
-      return "manual";
-    }
+    if (!deferredPrompt) return "manual";
     await deferredPrompt.prompt();
     const choice = await deferredPrompt.userChoice;
     setDeferredPrompt(null);
@@ -70,7 +49,6 @@ export function useInstallPrompt() {
 
   // Hiện nút cả khi trình duyệt chưa phát beforeinstallprompt để người dùng
   // vẫn có hướng dẫn cài thủ công từ menu trình duyệt.
-  // Android/Chrome chỉ cài tự động khi trình duyệt đã cung cấp prompt.
-  // iOS không hỗ trợ prompt này nên vẫn cho phép mở hướng dẫn cài thủ công.
-  return { canInstall: !installed && (!!deferredPrompt || isIOS()), install };
+  // Chỉ hiện nút khi trình duyệt cung cấp prompt cài đặt thật sự.
+  return { canInstall: !installed && !!deferredPrompt, install };
 }
