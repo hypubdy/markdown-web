@@ -1,7 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { AppShell } from "@/components/layout/app-shell";
+import { Button } from "@/components/ui/button";
+import { useInstallPrompt } from "@/app/install-prompt";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
@@ -10,7 +13,8 @@ import { SplitNoteEditor } from "@/features/notes/split-note-editor";
 import { useNotes, useNote, useSoftDeleteNote } from "@/features/notes/notes-hooks";
 import { useTags } from "@/features/tags/tags-hooks";
 import { notesApi } from "@/features/notes/notes.api";
-import { Plus, Search } from "lucide-react";
+import { isMarkdownFile, readMarkdownFile } from "@/features/notes/markdown-file";
+import { Download, FileUp, Plus, Search } from "lucide-react";
 import type { NoteListItem, SafeNote } from "@/types";
 
 export function NotesPage() {
@@ -25,6 +29,8 @@ export function NotesPage() {
   const [editing, setEditing] = useState<SafeNote | null>(null);
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [draggingFile, setDraggingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   /** true khi đang tải note khác (chuyển note) → hiện Skeleton, tránh vỡ layout */
   const [switching, setSwitching] = useState(false);
 
@@ -43,6 +49,7 @@ export function NotesPage() {
   const { data: activeNote, isLoading: loadingNote } = useNote(selectedId ?? undefined);
   const softDelete = useSoftDeleteNote();
   const queryClient = useQueryClient();
+  const { canInstall, install } = useInstallPrompt();
 
   const tagOptions = useMemo(() => tags ?? [], [tags]);
   const allNotesCount = searchableNotes?.length ?? 0;
@@ -90,6 +97,41 @@ export function NotesPage() {
     if (location.pathname !== "/") {
       navigate("/", { state: { createNote: true } });
     }
+  }
+
+  async function handleOpenFile(file?: File) {
+    if (!file) return;
+    if (!isMarkdownFile(file)) {
+      toast.error("Vui lòng chọn file có phần mở rộng .md");
+      return;
+    }
+
+    const hasUnsavedChanges =
+      !!editing &&
+      (editing.id
+        ? serializeNote(editing) !== savedSnapshot
+        : Boolean(editing.title.trim() || editing.content || editing.tags.length));
+    if (hasUnsavedChanges && !window.confirm("Thay đổi chưa lưu sẽ bị mất. Bạn vẫn muốn mở file mới?")) {
+      return;
+    }
+
+    try {
+      const draft = await readMarkdownFile(file);
+      setSavedSnapshot(null);
+      setEditing({ ...createEmptyNote(), ...draft });
+      setSwitching(false);
+      if (location.pathname !== "/") {
+        navigate("/", { replace: true, state: null });
+      }
+      toast.success(`Đã mở ${file.name}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Không thể đọc file Markdown");
+    }
+  }
+
+  function handleFileInputChange(event: React.ChangeEvent<HTMLInputElement>) {
+    void handleOpenFile(event.target.files?.[0]);
+    event.target.value = "";
   }
 
   async function handleSave() {
@@ -166,7 +208,24 @@ export function NotesPage() {
                   className="h-8 pl-8 text-sm"
                 />
               </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".md,text/markdown"
+                onChange={handleFileInputChange}
+                className="hidden"
+              />
               <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border hover:bg-accent"
+                title="Mở file .md"
+                aria-label="Mở file .md"
+              >
+                <FileUp className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
                 onClick={() => handleCreate()}
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border hover:bg-accent"
                 title="Tạo ghi chú"
@@ -230,7 +289,27 @@ export function NotesPage() {
         </aside>
 
         {/* Cột phải: editor chia đôi */}
-        <section className="flex min-w-0 flex-1 flex-col">
+        <section
+          className="relative flex min-w-0 flex-1 flex-col"
+          onDragOver={(event) => {
+            if (Array.from(event.dataTransfer.types).includes("Files")) {
+              event.preventDefault();
+              event.dataTransfer.dropEffect = "copy";
+              setDraggingFile(true);
+            }
+          }}
+          onDragLeave={() => setDraggingFile(false)}
+          onDrop={(event) => {
+            event.preventDefault();
+            setDraggingFile(false);
+            void handleOpenFile(event.dataTransfer.files?.[0]);
+          }}
+        >
+          {draggingFile && (
+            <div className="pointer-events-none absolute inset-3 z-10 flex items-center justify-center rounded-lg border-2 border-dashed border-primary bg-primary/10 text-sm font-medium text-primary">
+              Thả file .md để mở thành draft
+            </div>
+          )}
           {switching || (loadingNote && !editorNote) ? (
             <EditorSkeleton />
           ) : editorNote ? (
@@ -262,6 +341,16 @@ export function NotesPage() {
           )}
         </section>
       </div>
+      {canInstall && (
+        <Button
+          type="button"
+          className="fixed bottom-4 right-4 z-20 gap-2 shadow-lg"
+          onClick={() => void install()}
+        >
+          <Download className="h-4 w-4" />
+          Cài ứng dụng
+        </Button>
+      )}
     </AppShell>
   );
 }
