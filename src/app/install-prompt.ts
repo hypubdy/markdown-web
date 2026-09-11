@@ -13,6 +13,12 @@ function isStandalone() {
   );
 }
 
+function isIOS() {
+  if (typeof navigator === "undefined") return false;
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
 export function useInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(isStandalone);
@@ -41,10 +47,13 @@ export function useInstallPrompt() {
     await deferredPrompt.prompt();
     const choice = await deferredPrompt.userChoice;
     setDeferredPrompt(null);
+    if (choice.outcome === "accepted") setInstalled(true);
     return choice.outcome;
   }, [deferredPrompt]);
 
   // Hiện nút cả khi trình duyệt chưa phát beforeinstallprompt để người dùng
   // vẫn có hướng dẫn cài thủ công từ menu trình duyệt.
-  return { canInstall: !installed, install };
+  // Android/Chrome chỉ cài tự động khi trình duyệt đã cung cấp prompt.
+  // iOS không hỗ trợ prompt này nên vẫn cho phép mở hướng dẫn cài thủ công.
+  return { canInstall: !installed && (!!deferredPrompt || isIOS()), install };
 }
