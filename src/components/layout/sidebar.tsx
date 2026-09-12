@@ -1,8 +1,14 @@
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "@/features/auth/auth-context";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useTheme } from "@/app/theme-context";
+import {
+  DEVELOPER_MODE_CHANGED_EVENT,
+  enableDeveloperMode,
+  isDeveloperModeEnabled,
+} from "@/lib/developer-mode";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,10 +29,13 @@ import {
   PanelLeftClose,
   Moon,
   Sun,
+  FolderOpen,
+  Code2,
 } from "lucide-react";
 
 const NAV_ITEMS = [
   { to: "/", label: "Ghi chú", icon: FileText, end: true },
+  { to: "/workspace", label: "Workspace", icon: FolderOpen, developerOnly: true },
   { to: "/trash", label: "Thùng rác", icon: Trash2 },
   { to: "/tags", label: "Tags", icon: Tags },
   { to: "/admin/users", label: "Người dùng", icon: Users, adminOnly: true },
@@ -42,8 +51,11 @@ export interface SidebarProps {
 export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const developerMode = useDeveloperMode();
   const items = NAV_ITEMS.filter(
-    (item) => !item.adminOnly || user?.role === "admin",
+    (item) =>
+      (!item.adminOnly || user?.role === "admin") &&
+      (!item.developerOnly || developerMode),
   );
 
   if (collapsed) {
@@ -112,6 +124,7 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
                   </NavLink>
                 </DropdownMenuItem>
               )}
+              <DeveloperModeActivator />
               <DropdownMenuItem onClick={logout} className="text-destructive">
                 <LogOut /> Đăng xuất
               </DropdownMenuItem>
@@ -201,6 +214,7 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
+            <DeveloperModeActivator />
             <DropdownMenuItem onClick={logout} className="text-destructive">
               <LogOut /> Đăng xuất
             </DropdownMenuItem>
@@ -211,12 +225,58 @@ export function Sidebar({ collapsed = false, onToggle }: SidebarProps) {
   );
 }
 
+function useDeveloperMode(): boolean {
+  const [enabled, setEnabled] = useState(isDeveloperModeEnabled);
+
+  useEffect(() => {
+    function refresh() {
+      setEnabled(isDeveloperModeEnabled());
+    }
+
+    window.addEventListener(DEVELOPER_MODE_CHANGED_EVENT, refresh);
+    return () => window.removeEventListener(DEVELOPER_MODE_CHANGED_EVENT, refresh);
+  }, []);
+
+  return enabled;
+}
+
+function DeveloperModeActivator() {
+  const [tapCount, setTapCount] = useState(0);
+  const [enabled, setEnabled] = useState(isDeveloperModeEnabled);
+
+  function handleTap() {
+    if (enabled) return;
+    const nextCount = tapCount + 1;
+    if (nextCount >= 7) {
+      enableDeveloperMode();
+      setEnabled(true);
+      return;
+    }
+    setTapCount(nextCount);
+  }
+
+  return (
+    <DropdownMenuItem
+      onSelect={(event) => {
+        event.preventDefault();
+        handleTap();
+      }}
+    >
+      <Code2 />
+      {enabled ? "Developer mode đã bật" : `Phiên bản 0.1.0${tapCount ? ` · ${tapCount}/7` : ""}`}
+    </DropdownMenuItem>
+  );
+}
+
 /** Điều hướng gọn ở cạnh dưới màn hình cho thiết bị cảm ứng nhỏ. */
 export function MobileSidebar() {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const developerMode = useDeveloperMode();
   const items = NAV_ITEMS.filter(
-    (item) => !item.adminOnly || user?.role === "admin",
+    (item) =>
+      (!item.adminOnly || user?.role === "admin") &&
+      (!item.developerOnly || developerMode),
   );
 
   return (
@@ -273,6 +333,7 @@ export function MobileSidebar() {
               </NavLink>
             </DropdownMenuItem>
           )}
+          <DeveloperModeActivator />
           <DropdownMenuItem onClick={logout} className="text-destructive">
             <LogOut /> Đăng xuất
           </DropdownMenuItem>

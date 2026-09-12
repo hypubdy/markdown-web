@@ -2,6 +2,7 @@ import { type ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/features/auth/auth-context";
 import { Skeleton } from "@/components/ui/skeleton";
+import { isDeveloperModeEnabled } from "@/lib/developer-mode";
 
 /** Bọc trang yêu cầu đã đăng nhập — chưa đăng nhập thì redirect /login */
 export function RequireAuth({ children }: { children: ReactNode }) {
@@ -26,6 +27,14 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   if (user?.role !== "admin") {
     return <Navigate to="/" replace />;
+  }
+  return <>{children}</>;
+}
+
+/** Chỉ cho phép mở các tính năng nội bộ khi developer mode được bật. */
+export function RequireDeveloperMode({ children }: { children: ReactNode }) {
+  if (!isDeveloperModeEnabled()) {
+    return <Navigate to="/404" replace />;
   }
   return <>{children}</>;
 }

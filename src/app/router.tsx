@@ -1,5 +1,5 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
-import { RequireAdmin, RequireAuth, RedirectIfAuthenticated } from "@/app/guards";
+import { RequireAdmin, RequireAuth, RequireDeveloperMode, RedirectIfAuthenticated } from "@/app/guards";
 import { LoginPage } from "@/pages/login-page";
 import { RegisterPage } from "@/pages/register-page";
 import { SsoCallbackPage } from "@/pages/sso-callback-page";
@@ -9,6 +9,7 @@ import { TagsPage } from "@/pages/tags-page";
 import { AdminUsersPage } from "@/pages/admin-users-page";
 import { PublicSharePage } from "@/pages/public-share-page";
 import { NotFoundPage } from "@/pages/not-found-page";
+import { DocumentWorkspacePage } from "@/features/workspace/document-workspace";
 import type { ReactNode } from "react";
 
 function withAuth(el: ReactNode) {
@@ -39,6 +40,14 @@ export const router = createBrowserRouter([
   {
     path: "/",
     element: withAuth(<NotesPage />),
+  },
+  {
+    path: "/workspace",
+    element: withAuth(
+      <RequireDeveloperMode>
+        <DocumentWorkspacePage />
+      </RequireDeveloperMode>,
+    ),
   },
   {
     path: "/notes/:noteId",
